@@ -15,7 +15,7 @@ import {
   buildVoiceReplyMessages,
   mergeHuddleQuestionsIntoDialogue,
 } from './dialogue';
-import { simulateOvernight } from './overnight';
+import { runOvernightHunt } from './overnightProvider';
 import { applyOvernightToState, refreshIfStale } from './refresh';
 import { buildPacketResolutionNotes } from './resolve';
 import {
@@ -114,7 +114,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const loaded = await loadPersistedState();
-        const { state, didRefresh } = refreshIfStale(loaded);
+        const { state, didRefresh } = await refreshIfStale(loaded);
         if (didRefresh) {
           await savePersistedState(state);
         }
@@ -149,11 +149,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const completeIntake = useCallback(async () => {
     const intake = stateRef.current.draft;
     const profile = newProfile(intake);
-    const result = simulateOvernight({
+    const { result } = await runOvernightHunt({
       intake,
       team: profile.team,
       packets: [],
       corpus: stateRef.current.corpus,
+      packetArchive: [],
     });
     const nextDialogue = mergeHuddleQuestionsIntoDialogue([], result.huddle);
     const next: PersistedState = {
@@ -329,7 +330,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const runOvernight = useCallback(async () => {
-    const next = applyOvernightToState(stateRef.current);
+    const next = await applyOvernightToState(stateRef.current);
     setHuddle(next.huddle);
     setPackets(next.packets);
     setPacketArchive(next.packetArchive);
@@ -338,7 +339,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [flush]);
 
   const ensureOvernightIfStale = useCallback(async () => {
-    const { state, didRefresh } = refreshIfStale(stateRef.current);
+    const { state, didRefresh } = await refreshIfStale(stateRef.current);
     if (!didRefresh) return false;
     setHuddle(state.huddle);
     setPackets(state.packets);

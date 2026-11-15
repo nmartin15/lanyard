@@ -43,7 +43,8 @@
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "overnight:server": "node server/overnight-server.mjs"
   },
   "jest": {
     "preset": "jest-expo",

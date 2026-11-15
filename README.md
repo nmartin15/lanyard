@@ -9,8 +9,29 @@ Private advocacy team cast from intake. Sub-agents hunt (career / business / cap
 ```bash
 npm install
 npm start
-# then i / a / w
+# then press i for iOS Simulator, or scan the QR in Expo Go on your iPhone
 ```
+
+### Dogfood checklist (iPhone)
+
+1. Finish intake → confirm team  
+2. Huddle → skim belief / chasing / questions  
+3. Packets → approve one, kill one  
+4. Walk → one text reply (and optional voice)  
+5. Dialogue → confirm replies landed  
+6. Note anything that feels fake or confusing  
+
+### Optional: real overnight (LLM)
+
+```bash
+cp .env.example .env
+# set OPENAI_API_KEY
+# for a physical iPhone, set EXPO_PUBLIC_OVERNIGHT_URL to http://YOUR_LAN_IP:8787
+npm run overnight:server
+# restart Expo after editing .env
+```
+
+If the URL/key is missing or the server fails, the app **falls back to local simulation**.
 
 ## What’s in Phase 0–1
 
@@ -31,8 +52,9 @@ npm start
 
 ## Not yet
 
-- Real overnight workers / agent-to-agent (swap in behind the same `runOvernight` seam)
+- Multi-agent overnight / true background workers (thin single-LLM `/overnight` exists)
 - Walk voice transcription (STT) — deferred; captions + local audio are enough for now
+- Auth + cloud sync
 - Expertise rent/license marketplace (pricing deferred)
 
 ## Product spine

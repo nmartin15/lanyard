@@ -41,8 +41,8 @@ function completedState(updatedAt: string) {
 }
 
 describe('refresh helpers', () => {
-  test('applyOvernightToState archives resolved and refreshes board', () => {
-    const next = applyOvernightToState(
+  test('applyOvernightToState archives resolved and refreshes board', async () => {
+    const next = await applyOvernightToState(
       completedState('2026-01-01T00:00:00.000Z'),
       () => '2026-01-02T00:00:00.000Z',
       () => 55
@@ -53,16 +53,16 @@ describe('refresh helpers', () => {
     expect(next.huddle.belief).toContain('hire');
   });
 
-  test('refreshIfStale only when intake complete and stale', () => {
+  test('refreshIfStale only when intake complete and stale', async () => {
     const fresh = completedState(new Date().toISOString());
-    expect(refreshIfStale(fresh).didRefresh).toBe(false);
+    expect((await refreshIfStale(fresh)).didRefresh).toBe(false);
 
     const incomplete = emptyPersistedState();
-    expect(refreshIfStale(incomplete).didRefresh).toBe(false);
+    expect((await refreshIfStale(incomplete)).didRefresh).toBe(false);
 
     const staleAt = Date.now() - 10 * 60 * 60 * 1000;
     const stale = completedState(new Date(staleAt).toISOString());
-    const result = refreshIfStale(stale, Date.now(), () => 'now', () => 1);
+    const result = await refreshIfStale(stale, Date.now(), () => 'now', () => 1);
     expect(result.didRefresh).toBe(true);
     expect(result.state.huddle.updatedAt).toBe('now');
   });
