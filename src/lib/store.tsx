@@ -8,10 +8,16 @@ import React, {
   useState,
 } from 'react';
 
-import { assembleTeam, buildHuddle, buildStarterPackets, emptyIntake } from './assembleTeam';
+import { assembleTeam, buildStarterPackets, emptyIntake } from './assembleTeam';
 import { createCorpusItem, mergeCorpusNote } from './corpus';
-import { buildReplyMessages, mergeHuddleQuestionsIntoDialogue } from './dialogue';
-import { isHuddleStale, simulateOvernight } from './overnight';
+import {
+  buildReplyMessages,
+  buildVoiceReplyMessages,
+  mergeHuddleQuestionsIntoDialogue,
+} from './dialogue';
+import { simulateOvernight } from './overnight';
+import { applyOvernightToState, refreshIfStale } from './refresh';
+import { buildPacketResolutionNotes } from './resolve';
 import {
   clearPersistedState,
   emptyPersistedState,
@@ -34,6 +40,7 @@ type Store = {
   profile: UserProfile;
   huddle: Huddle;
   packets: Packet[];
+  packetArchive: Packet[];
   corpus: CorpusItem[];
   dialogue: DialogueMessage[];
   updateIntake: (patch: Partial<IntakeDraft>) => Promise<void>;
@@ -48,6 +55,11 @@ type Store = {
   runOvernight: () => Promise<void>;
   ensureOvernightIfStale: () => Promise<boolean>;
   sendDialogue: (text: string) => Promise<void>;
+  sendWalkVoice: (input: {
+    uri: string;
+    caption?: string;
+    durationMs?: number;
+  }) => Promise<CorpusItem>;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -67,8 +79,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState<UserProfile | null>(null);
   const [draft, setDraft] = useState<IntakeDraft>(emptyIntake());
-  const [huddle, setHuddle] = useState<Huddle>(() => buildHuddle(emptyIntake()));
+  const empty = emptyPersistedState();
+  const [huddle, setHuddle] = useState<Huddle>(empty.huddle);
   const [packets, setPackets] = useState<Packet[]>(() => buildStarterPackets(emptyIntake()));
+  const [packetArchive, setPacketArchive] = useState<Packet[]>([]);
   const [corpus, setCorpus] = useState<CorpusItem[]>([]);
   const [dialogue, setDialogue] = useState<DialogueMessage[]>([]);
   const stateRef = useRef<PersistedState>(emptyPersistedState());
@@ -100,13 +114,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const loaded = await loadPersistedState();
-        stateRef.current = loaded;
-        setSaved(loaded.profile);
-        setDraft(loaded.draft);
-        setHuddle(loaded.huddle);
-        setPackets(loaded.packets);
-        setCorpus(loaded.corpus);
-        setDialogue(loaded.dialogue);
+        const { state, didRefresh } = refreshIfStale(loaded);
+        if (didRefresh) {
+          await savePersistedState(state);
+        }
+        stateRef.current = state;
+        setSaved(state.profile);
+        setDraft(state.draft);
+        setHuddle(state.huddle);
+        setPackets(state.packets);
+        setPacketArchive(state.packetArchive);
+        setCorpus(state.corpus);
+        setDialogue(state.dialogue);
       } finally {
         setReady(true);
       }
@@ -130,22 +149,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const completeIntake = useCallback(async () => {
     const intake = stateRef.current.draft;
     const profile = newProfile(intake);
-    const nextHuddle = buildHuddle(intake);
-    const nextPackets = buildStarterPackets(intake);
-    const nextDialogue = mergeHuddleQuestionsIntoDialogue([], nextHuddle);
+    const result = simulateOvernight({
+      intake,
+      team: profile.team,
+      packets: [],
+      corpus: stateRef.current.corpus,
+    });
+    const nextDialogue = mergeHuddleQuestionsIntoDialogue([], result.huddle);
     const next: PersistedState = {
       version: 1,
       profile,
       draft: intake,
-      huddle: nextHuddle,
-      packets: nextPackets,
+      huddle: result.huddle,
+      packets: result.packets,
+      packetArchive: [],
       corpus: stateRef.current.corpus,
       dialogue: nextDialogue,
     };
     setSaved(profile);
     setDraft(intake);
-    setHuddle(nextHuddle);
-    setPackets(nextPackets);
+    setHuddle(result.huddle);
+    setPackets(result.packets);
+    setPacketArchive([]);
     setDialogue(nextDialogue);
     await flush(next);
   }, [flush]);
@@ -169,12 +194,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const resetAll = useCallback(async () => {
     epochRef.current += 1;
-    const empty = emptyPersistedState();
-    stateRef.current = empty;
+    const cleared = emptyPersistedState();
+    stateRef.current = cleared;
     setSaved(null);
-    setDraft(empty.draft);
-    setPackets(empty.packets);
-    setHuddle(empty.huddle);
+    setDraft(cleared.draft);
+    setPackets(cleared.packets);
+    setPacketArchive([]);
+    setHuddle(cleared.huddle);
     setCorpus([]);
     setDialogue([]);
     await enqueueWrite(async () => {
@@ -184,11 +210,58 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const resolvePacket = useCallback(
     async (id: string, status: Packet['status']) => {
-      const packetsNext = stateRef.current.packets.map((p) =>
+      if (status === 'pending') return;
+      const current = stateRef.current;
+      const target = current.packets.find((p) => p.id === id);
+      if (!target || target.status !== 'pending') return;
+
+      const packetsNext = current.packets.map((p) =>
         p.id === id ? { ...p, status } : p
       );
-      const next: PersistedState = { ...stateRef.current, packets: packetsNext };
+      const notes = buildPacketResolutionNotes(target, status);
+      const item = createCorpusItem({ kind: 'text', text: notes.corpusText });
+      const baseIntake = current.profile?.intake ?? current.draft;
+      const intake = {
+        ...baseIntake,
+        corpusNote: mergeCorpusNote(baseIntake.corpusNote, item),
+      };
+      const corpusNext = [...current.corpus, item];
+      const dialogueNext = [...current.dialogue, notes.dialogue];
+
+      if (current.profile) {
+        const profile: UserProfile = {
+          ...current.profile,
+          intake,
+          updatedAt: new Date().toISOString(),
+        };
+        const next: PersistedState = {
+          ...current,
+          profile,
+          draft: intake,
+          packets: packetsNext,
+          corpus: corpusNext,
+          dialogue: dialogueNext,
+        };
+        setSaved(profile);
+        setDraft(intake);
+        setPackets(packetsNext);
+        setCorpus(corpusNext);
+        setDialogue(dialogueNext);
+        await flush(next);
+        return;
+      }
+
+      const next: PersistedState = {
+        ...current,
+        draft: intake,
+        packets: packetsNext,
+        corpus: corpusNext,
+        dialogue: dialogueNext,
+      };
+      setDraft(intake);
       setPackets(packetsNext);
+      setCorpus(corpusNext);
+      setDialogue(dialogueNext);
       await flush(next);
     },
     [flush]
@@ -256,35 +329,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const runOvernight = useCallback(async () => {
-    const current = stateRef.current;
-    const intake = current.profile?.intake ?? current.draft;
-    const team = current.profile?.team ?? [];
-    const result = simulateOvernight({
-      intake,
-      team,
-      packets: current.packets,
-      corpus: current.corpus,
-    });
-    const nextDialogue = mergeHuddleQuestionsIntoDialogue(current.dialogue, result.huddle);
-    const next: PersistedState = {
-      ...current,
-      huddle: result.huddle,
-      packets: result.packets,
-      dialogue: nextDialogue,
-    };
-    setHuddle(result.huddle);
-    setPackets(result.packets);
-    setDialogue(nextDialogue);
+    const next = applyOvernightToState(stateRef.current);
+    setHuddle(next.huddle);
+    setPackets(next.packets);
+    setPacketArchive(next.packetArchive);
+    setDialogue(next.dialogue);
     await flush(next);
   }, [flush]);
 
   const ensureOvernightIfStale = useCallback(async () => {
-    const current = stateRef.current;
-    if (!current.profile?.intakeComplete) return false;
-    if (!isHuddleStale(current.huddle)) return false;
-    await runOvernight();
+    const { state, didRefresh } = refreshIfStale(stateRef.current);
+    if (!didRefresh) return false;
+    setHuddle(state.huddle);
+    setPackets(state.packets);
+    setPacketArchive(state.packetArchive);
+    setDialogue(state.dialogue);
+    await flush(state);
     return true;
-  }, [runOvernight]);
+  }, [flush]);
 
   const sendDialogue = useCallback(
     async (text: string) => {
@@ -336,6 +398,61 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [flush]
   );
 
+  const sendWalkVoice = useCallback(
+    async (input: { uri: string; caption?: string; durationMs?: number }) => {
+      const caption = (input.caption ?? '').trim() || 'Voice note for the team';
+      const item = createCorpusItem({
+        kind: 'voice',
+        text: caption,
+        uri: input.uri,
+        durationMs: input.durationMs,
+      });
+      const replies = buildVoiceReplyMessages(caption);
+      const current = stateRef.current;
+      const baseIntake = current.profile?.intake ?? current.draft;
+      const intake = {
+        ...baseIntake,
+        corpusNote: mergeCorpusNote(baseIntake.corpusNote, item),
+      };
+      const corpusNext = [...current.corpus, item];
+      const dialogueNext = [...current.dialogue, ...replies];
+
+      if (current.profile) {
+        const profile: UserProfile = {
+          ...current.profile,
+          intake,
+          updatedAt: new Date().toISOString(),
+        };
+        const next: PersistedState = {
+          ...current,
+          profile,
+          draft: intake,
+          corpus: corpusNext,
+          dialogue: dialogueNext,
+        };
+        setSaved(profile);
+        setDraft(intake);
+        setCorpus(corpusNext);
+        setDialogue(dialogueNext);
+        await flush(next);
+        return item;
+      }
+
+      const next: PersistedState = {
+        ...current,
+        draft: intake,
+        corpus: corpusNext,
+        dialogue: dialogueNext,
+      };
+      setDraft(intake);
+      setCorpus(corpusNext);
+      setDialogue(dialogueNext);
+      await flush(next);
+      return item;
+    },
+    [flush]
+  );
+
   const value = useMemo<Store>(() => {
     const profile: UserProfile = saved ?? {
       intakeComplete: false,
@@ -349,6 +466,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       profile,
       huddle,
       packets,
+      packetArchive,
       corpus,
       dialogue,
       updateIntake,
@@ -361,6 +479,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       runOvernight,
       ensureOvernightIfStale,
       sendDialogue,
+      sendWalkVoice,
     };
   }, [
     ready,
@@ -368,6 +487,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     draft,
     huddle,
     packets,
+    packetArchive,
     corpus,
     dialogue,
     updateIntake,
@@ -380,6 +500,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     runOvernight,
     ensureOvernightIfStale,
     sendDialogue,
+    sendWalkVoice,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

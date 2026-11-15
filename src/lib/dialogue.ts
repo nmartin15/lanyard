@@ -42,3 +42,33 @@ export function buildReplyMessages(
     },
   ];
 }
+
+export function buildVoiceReplyMessages(
+  caption: string,
+  now = () => new Date().toISOString(),
+  id = () => `d-${Date.now()}`
+): DialogueMessage[] {
+  const stamp = now();
+  const base = id();
+  const label = caption.trim() || 'Voice note for the team';
+  return [
+    { id: base, from: 'you', text: `Voice: ${label}`, createdAt: stamp },
+    {
+      id: `${base}-r`,
+      from: 'team',
+      text: 'Voice note logged into corpus. We’ll retarget hunts from that.',
+      createdAt: stamp,
+    },
+  ];
+}
+
+/** Team prompts since the last user reply — drives Talk tab badge. */
+export function unansweredTeamPrompts(dialogue: DialogueMessage[]): number {
+  let count = 0;
+  for (let i = dialogue.length - 1; i >= 0; i -= 1) {
+    const msg = dialogue[i];
+    if (msg.from === 'you') break;
+    if (msg.from === 'team') count += 1;
+  }
+  return count;
+}

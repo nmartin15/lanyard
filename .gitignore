@@ -25,7 +25,8 @@ secrets/
 .vscode/
 .idea/
 
-# Debug
+# Debug / coverage
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+coverage/

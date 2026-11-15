@@ -116,6 +116,77 @@ describe('simulateOvernight', () => {
     expect(result.packets.some((p) => p.whyNow?.includes('IC builder'))).toBe(true);
   });
 
+  test('network altitude appears in belief and chasing', () => {
+    const result = simulateOvernight(
+      {
+        intake: intake({ networkAltitude: 'selective' }),
+        team,
+        packets: [],
+        corpus: [],
+      },
+      () => 't',
+      () => 3
+    );
+    expect(result.huddle.belief).toContain('selective');
+    expect(result.huddle.chasing.some((c) => c.includes('selective'))).toBe(true);
+  });
+
+  test('rare interrupt policy keeps a leaner board than normal', () => {
+    const rare = simulateOvernight(
+      {
+        intake: intake({ interruptPolicy: 'rare' }),
+        team,
+        packets: [],
+        corpus: [],
+      },
+      () => 't',
+      () => 1
+    );
+    const normal = simulateOvernight(
+      {
+        intake: intake({ interruptPolicy: 'normal' }),
+        team: [
+          ...team,
+          { role: 'capital', title: 'Capital', mandate: 'LP paths' },
+          { role: 'operators', title: 'Operators', mandate: 'Hires' },
+        ],
+        packets: [],
+        corpus: [],
+      },
+      () => 't',
+      () => 2
+    );
+    expect(rare.packets.length).toBeLessThanOrEqual(3);
+    expect(rare.huddle.belief).toContain('rare');
+    expect(normal.packets.length).toBeGreaterThan(rare.packets.length);
+    expect(normal.huddle.belief).toContain('normal');
+  });
+
+  test('filtered includes kills from packet archive', () => {
+    const result = simulateOvernight(
+      {
+        intake: intake(),
+        team,
+        packets: [],
+        corpus: [],
+        packetArchive: [
+          {
+            id: 'arch1',
+            who: 'Archived spray',
+            why: 'y',
+            whyNow: 'n',
+            risk: 'r',
+            nextStep: 's',
+            status: 'kill',
+          },
+        ],
+      },
+      () => 't',
+      () => 7
+    );
+    expect(result.huddle.filtered.some((f) => f.includes('Archived spray'))).toBe(true);
+  });
+
   test('isHuddleStale after threshold', () => {
     const fresh = {
       belief: '',

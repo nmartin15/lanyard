@@ -7,6 +7,7 @@ export type OvernightInput = {
   team: TeamSeat[];
   packets: Packet[];
   corpus: CorpusItem[];
+  packetArchive?: Packet[];
 };
 
 export type OvernightResult = {
@@ -35,10 +36,25 @@ function seatTitles(team: TeamSeat[]): string {
     .join(', ');
 }
 
-function huntSeats(team: TeamSeat[]): TeamSeat[] {
+function huntSeats(team: TeamSeat[], limit: number): TeamSeat[] {
   const hunters = team.filter((s) => s.role !== 'counsel');
   const pool = hunters.length > 0 ? hunters : team;
-  return pool.slice(0, 2);
+  return pool.slice(0, Math.max(1, limit));
+}
+
+function huntSeatLimit(policy: IntakeDraft['interruptPolicy']): number {
+  return policy === 'normal' ? 2 : 1;
+}
+
+function boardLimit(policy: IntakeDraft['interruptPolicy']): number {
+  return policy === 'normal' ? 4 : 3;
+}
+
+function altitudeLine(altitude: IntakeDraft['networkAltitude']): string | null {
+  if (altitude === 'selective') return 'Altitude: selective — optimize for fit, not reach.';
+  if (altitude === 'established') return 'Altitude: established — cut noise hard; warm paths first.';
+  if (altitude === 'building') return 'Altitude: building — prioritize warm paths over cold.';
+  return null;
 }
 
 function noisePacket(
@@ -121,7 +137,7 @@ export function simulateOvernight(
   now = () => new Date().toISOString(),
   idSeed = () => Date.now()
 ): OvernightResult {
-  const { intake, team, packets, corpus } = input;
+  const { intake, team, packets, corpus, packetArchive = [] } = input;
   const goals = intake.goals.trim();
   const anti = intake.antiGoals.trim();
   const respect = intake.respectList.trim();
@@ -129,11 +145,16 @@ export function simulateOvernight(
   const seed = idSeed();
 
   const approved = packets.filter((p) => p.status === 'approve');
-  const killed = packets.filter((p) => p.status === 'kill');
+  const killed = [
+    ...packets.filter((p) => p.status === 'kill'),
+    ...packetArchive.filter((p) => p.status === 'kill'),
+  ];
   const reshape = packets.filter((p) => p.status === 'reshape' || p.status === 'need_human');
   const pending = packets.filter((p) => p.status === 'pending');
   const corrections = latestCorrections(corpus);
-  const seats = huntSeats(team);
+  const seatLimit = huntSeatLimit(intake.interruptPolicy);
+  const seats = huntSeats(team, seatLimit);
+  const maxBoard = boardLimit(intake.interruptPolicy);
 
   const beliefParts = [
     goals
@@ -141,10 +162,15 @@ export function simulateOvernight(
       : `Overnight, ${seatTitles(team)} waited on clearer goals before hunting hard`,
   ];
   if (seats.length > 0) {
-    beliefParts.push(
-      `${seats.map((s) => s.title).join(' + ')} led the pass.`
-    );
+    beliefParts.push(`${seats.map((s) => s.title).join(' + ')} led the pass.`);
   }
+  beliefParts.push(
+    intake.interruptPolicy === 'normal'
+      ? 'Interrupt posture: normal — slightly broader hunt.'
+      : 'Interrupt posture: rare — lean pack only.'
+  );
+  const altitude = altitudeLine(intake.networkAltitude);
+  if (altitude) beliefParts.push(altitude);
   if (approved.length > 0) {
     beliefParts.push(`${approved.length} path(s) you approved stay warm.`);
   }
@@ -157,7 +183,8 @@ export function simulateOvernight(
   if (approved.length > 0) {
     chasing.push(...approved.slice(0, 2).map((p) => `Advance: ${truncate(p.who, 56)}`));
   }
-  for (const seat of seats.slice(0, 2)) {
+  if (altitude) chasing.push(altitude);
+  for (const seat of seats) {
     chasing.push(
       goals
         ? `${seat.title}: hunt “${truncate(goals, 40)}”`
@@ -209,7 +236,7 @@ export function simulateOvernight(
     updatedAt: stamp,
   };
 
-  const carried = pending.slice(0, 2);
+  const carried = pending.slice(0, Math.max(1, maxBoard - 2));
   const fresh = seats.map((seat, index) =>
     seatHuntPacket({
       seat,
@@ -246,6 +273,6 @@ export function simulateOvernight(
 
   return {
     huddle,
-    packets: [...carried, ...fresh].slice(0, 4),
+    packets: [...carried, ...fresh].slice(0, maxBoard),
   };
 }

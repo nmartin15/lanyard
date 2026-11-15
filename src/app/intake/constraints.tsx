@@ -20,26 +20,34 @@ export default function ConstraintsScreen() {
           label="Rare interrupts"
           detail="Huddle when you open. Tap only if truly time-sensitive."
           selected={interruptPolicy === 'rare'}
-          onPress={() => updateIntake({ interruptPolicy: 'rare' })}
+          onPress={() => {
+            void updateIntake({ interruptPolicy: 'rare' });
+          }}
         />
         <Choice
           label="Normal"
           detail="A bit more proactive when something clears the bar."
           selected={interruptPolicy === 'normal'}
-          onPress={() => updateIntake({ interruptPolicy: 'normal' })}
+          onPress={() => {
+            void updateIntake({ interruptPolicy: 'normal' });
+          }}
         />
         <Title>Reputation</Title>
         <Choice
           label="Never message as me without asking"
           detail="Default. You own every external first touch."
           selected={neverMessageAsMe}
-          onPress={() => updateIntake({ neverMessageAsMe: true })}
+          onPress={() => {
+            void updateIntake({ neverMessageAsMe: true });
+          }}
         />
         <Choice
           label="I may allow send-as-me later"
           detail="Still requires explicit enablement per class of move."
           selected={!neverMessageAsMe}
-          onPress={() => updateIntake({ neverMessageAsMe: false })}
+          onPress={() => {
+            void updateIntake({ neverMessageAsMe: false });
+          }}
         />
         <Body>Next: we cast your bench from this intake.</Body>
         <Button label="Assemble my team" onPress={() => router.push('/intake/reveal')} />

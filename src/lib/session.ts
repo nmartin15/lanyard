@@ -19,6 +19,7 @@ export type PersistedState = {
   draft: IntakeDraft;
   huddle: Huddle;
   packets: Packet[];
+  packetArchive: Packet[];
   corpus: CorpusItem[];
   dialogue: DialogueMessage[];
 };
@@ -31,6 +32,7 @@ export function emptyPersistedState(): PersistedState {
     draft,
     huddle: buildHuddle(draft),
     packets: buildStarterPackets(draft),
+    packetArchive: [],
     corpus: [],
     dialogue: [],
   };
@@ -43,6 +45,7 @@ export function stateFromProfile(profile: UserProfile): PersistedState {
     draft: profile.intake,
     huddle: buildHuddle(profile.intake),
     packets: buildStarterPackets(profile.intake),
+    packetArchive: [],
     corpus: [],
     dialogue: [],
   };
@@ -51,6 +54,7 @@ export function stateFromProfile(profile: UserProfile): PersistedState {
 export function normalizePersistedState(state: PersistedState): PersistedState {
   return {
     ...state,
+    packetArchive: Array.isArray(state.packetArchive) ? state.packetArchive : [],
     corpus: Array.isArray(state.corpus) ? state.corpus : [],
     dialogue: Array.isArray(state.dialogue) ? state.dialogue : [],
   };

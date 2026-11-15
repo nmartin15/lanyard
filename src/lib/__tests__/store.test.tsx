@@ -42,8 +42,9 @@ describe('StoreProvider', () => {
     expect(result.current.profile.team[0].role).toBe('deal');
     expect(result.current.profile.team[0].mandate).toContain('selective');
     expect(result.current.huddle.belief).toContain('one operator hire');
-    expect(result.current.packets).toHaveLength(2);
-    expect(result.current.packets[0].who).toContain('ops peers');
+    expect(result.current.packets.length).toBeGreaterThanOrEqual(2);
+    expect(result.current.packets.some((p) => p.who.includes('Deal lead'))).toBe(true);
+    expect(result.current.packets.some((p) => p.who.includes('ops peers'))).toBe(true);
   });
 
   test('persists packet resolution and seat recast', async () => {
@@ -65,6 +66,10 @@ describe('StoreProvider', () => {
       await result.current.resolvePacket(packetId, 'kill');
     });
 
+    expect(result.current.packets.find((p) => p.id === packetId)?.status).toBe('kill');
+    expect(result.current.dialogue.some((m) => m.text.includes('Killed'))).toBe(true);
+    expect(result.current.profile.intake.corpusNote).toContain('[packet kill]');
+
     await act(async () => {
       await result.current.recastSeat(0, {
         role: 'deal',
@@ -75,10 +80,9 @@ describe('StoreProvider', () => {
 
     await act(async () => {
       await result.current.appendCorpusNote('keep quiet on LinkedIn');
-      await result.current.appendCorpusItem({
-        kind: 'voice',
-        text: 'walk correction',
+      await result.current.sendWalkVoice({
         uri: 'file://walk.m4a',
+        caption: 'walk correction',
         durationMs: 1200,
       });
       await result.current.appendCorpusItem({
@@ -89,10 +93,10 @@ describe('StoreProvider', () => {
       });
     });
 
-    expect(result.current.packets[0].status).toBe('kill');
     expect(result.current.profile.team[0].title).toBe('Deal lead');
     expect(result.current.profile.intake.corpusNote).toContain('keep quiet on LinkedIn');
     expect(result.current.profile.intake.corpusNote).toContain('[voice');
+    expect(result.current.dialogue.some((m) => m.text === 'Voice: walk correction')).toBe(true);
     expect(result.current.corpus.map((c) => c.kind)).toEqual(
       expect.arrayContaining(['text', 'voice', 'file'])
     );
@@ -134,6 +138,7 @@ describe('StoreProvider', () => {
     expect(result.current.huddle.filtered.some((f) => f.startsWith('Killed:'))).toBe(true);
     expect(result.current.packets.every((p) => p.status === 'pending')).toBe(true);
     expect(result.current.packets.some((p) => p.id === firstId)).toBe(false);
+    expect(result.current.packetArchive.some((p) => p.id === firstId)).toBe(true);
     expect(result.current.dialogue.length).toBeGreaterThan(dialogueBefore);
     expect(result.current.dialogue.some((m) => m.text === 'keep bar high')).toBe(true);
 
@@ -143,7 +148,7 @@ describe('StoreProvider', () => {
     expect(raw).toContain('keep bar high');
   });
 
-  test('ensureOvernightIfStale only runs when stale', async () => {
+  test('fresh huddle skips ensureOvernightIfStale; stale state refreshes on load', async () => {
     const { result } = await renderHook(() => useStore(), { wrapper });
     await waitFor(() => expect(result.current.ready).toBe(true));
 
@@ -161,25 +166,36 @@ describe('StoreProvider', () => {
     });
     expect(ran).toBe(false);
 
-    // Force stale timestamp via overnight with fixed past... mutate by running overnight
-    // then manually isn't exposed — simulate by completing then checking fresh = false above.
-    // Make huddle stale by writing storage then reloading is heavy; call isHuddleStale path
-    // by advancing: set updatedAt through runOvernight then stub — instead assert API exists
-    // and returns false when fresh (above). A second call after forcing stale via AsyncStorage:
     const raw = await AsyncStorage.getItem(STATE_KEY);
     expect(raw).toBeTruthy();
     const parsed = JSON.parse(raw!);
-    parsed.huddle.updatedAt = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
+    const staleStamp = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
+    parsed.huddle.updatedAt = staleStamp;
+    parsed.packets = [
+      {
+        id: 'stale-kill',
+        who: 'Stale kill',
+        why: 'y',
+        whyNow: 'n',
+        risk: 'r',
+        nextStep: 's',
+        status: 'kill',
+      },
+    ];
     await AsyncStorage.setItem(STATE_KEY, JSON.stringify(parsed));
 
     const { result: result2 } = await renderHook(() => useStore(), { wrapper });
     await waitFor(() => expect(result2.current.ready).toBe(true));
-    let ranStale = false;
+    // App-open refresh already ran — huddle should no longer be the stale stamp.
+    expect(result2.current.huddle.updatedAt).not.toBe(staleStamp);
+    expect(result2.current.packetArchive.some((p) => p.id === 'stale-kill')).toBe(true);
+    expect(result2.current.packets.every((p) => p.status === 'pending')).toBe(true);
+
+    let ranAgain = true;
     await act(async () => {
-      ranStale = await result2.current.ensureOvernightIfStale();
+      ranAgain = await result2.current.ensureOvernightIfStale();
     });
-    expect(ranStale).toBe(true);
-    expect(result2.current.packets.length).toBeGreaterThan(0);
+    expect(ranAgain).toBe(false);
   });
 
   test('reset clears persisted state', async () => {

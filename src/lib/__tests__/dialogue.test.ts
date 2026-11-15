@@ -1,4 +1,9 @@
-import { buildReplyMessages, mergeHuddleQuestionsIntoDialogue } from '../dialogue';
+import {
+  buildReplyMessages,
+  buildVoiceReplyMessages,
+  mergeHuddleQuestionsIntoDialogue,
+  unansweredTeamPrompts,
+} from '../dialogue';
 import type { DialogueMessage, Huddle } from '../types';
 
 const huddle = (questions: string[], updatedAt = 't1'): Huddle => ({
@@ -40,5 +45,27 @@ describe('dialogue helpers', () => {
         createdAt: 'now',
       },
     ]);
+  });
+
+  test('buildVoiceReplyMessages labels the voice turn', () => {
+    const msgs = buildVoiceReplyMessages('hold anti-goals', () => 'now', () => 'v1');
+    expect(msgs[0]).toEqual({
+      id: 'v1',
+      from: 'you',
+      text: 'Voice: hold anti-goals',
+      createdAt: 'now',
+    });
+    expect(msgs[1].text).toContain('Voice note logged');
+  });
+
+  test('unansweredTeamPrompts counts trailing team messages', () => {
+    const thread: DialogueMessage[] = [
+      { id: '1', from: 'team', text: 'q1', createdAt: 'a' },
+      { id: '2', from: 'you', text: 'answer', createdAt: 'b' },
+      { id: '3', from: 'team', text: 'ack', createdAt: 'c' },
+      { id: '4', from: 'team', text: 'q2', createdAt: 'd' },
+    ];
+    expect(unansweredTeamPrompts(thread)).toBe(2);
+    expect(unansweredTeamPrompts(thread.slice(0, 2))).toBe(0);
   });
 });
