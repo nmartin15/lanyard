@@ -1,71 +1,33 @@
-# LinkedIn Lead Harvester
+# Lanyard
 
-Apify pulls commenters from retail trading influencers’ LinkedIn posts. Rules strip junk. Real people land in Google Sheets with their comment attached.
+**Mobile only.** You sit. Your team works.
 
-**v1 scope:** Apify in → filter → Sheets out. Sources can be personal `/in/` profiles **or** `/company/` pages. Optional **BetterContact** email enrichment (off by default until bake-off). No phones, sending, database, or LLM.
+Private advocacy team cast from intake. Sub-agents hunt (career / business / capital / as cast), go out carefully, come back to iterate with you. No spam. No feed.
 
-## Quick start
+## Run
 
-See **[SETUP.md](SETUP.md)** for the full walkthrough.
-
-```powershell
-.\scripts\setup_google.ps1
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-# set APIFY_TOKEN in .env
-python scripts\init_workbook.py
-# seed Influencers tab
-$env:DRY_RUN = "true"
-python -m li_harvester.runner
+```bash
+npm install
+npm start
+# then i / a / w
 ```
 
-## Layout
+## What’s in Phase 0–1
 
-```
-li_harvester/
-  config.py      env + sheet constants
-  models.py      Post, RawComment, Lead
-  normalize.py   URL + name cleanup
-  filters.py     junk rules (edit this weekly)
-  apify.py       actor run / poll / map
-  enrich.py      BetterContact email waterfall
-  sheets.py      Sheets + Drive
-  runner.py      orchestration
-scripts/
-  setup_google.ps1
-  init_workbook.py
-  export_for_bettercontact.py
-tests/
-```
+- Intake → archetype, goals, corpus, constraints → **team reveal**
+- Tabs: Team (recast seats), Huddle, Walk, Packets, Dialogue
+- Huddle + packets generated from intake (local stand-ins until real workers)
+- Local persistence (AsyncStorage): profile, intake draft, huddle, packets, corpus
+- Walk voice notes + corpus file attach (local URIs; no transcription yet)
+- **Local overnight simulation** (Huddle → Run overnight hunt; auto-runs if huddle is >8h stale)
+- Seat-aware overnight packets; persisted Dialogue thread seeded from huddle questions
 
-## Workbook tabs
+## Not yet
 
-| Tab | Role |
-|---|---|
-| `Influencers` | Retail sources → posts/comments → leads |
-| `HFI Leads - LinkedIn Posts` | Deliverable commenter leads (20 columns) |
-| `Tier1Firms` | Quant firm company URLs (people path only) |
-| `Tier1People` | People-at-company output |
-| `_Ops` | Hidden dedupe + run log + counters |
+- Real overnight workers / agent-to-agent (swap in behind the same `runOvernight` seam)
+- Walk voice transcription (STT) — deferred; captions + local audio are enough for now
+- Expertise rent/license marketplace (pricing deferred)
 
-```powershell
-# Tier1 people-at-company (separate from Influencers harvest)
-$env:DRY_RUN = "true"
-python -m li_harvester.people_runner
-```
+## Product spine
 
-## Tests
-
-```powershell
-pytest -q
-```
-
-## BetterContact
-
-1. Harvest leads with `ENABLE_ENRICHMENT=false`.
-2. `python scripts/export_for_bettercontact.py --limit 100`
-3. Upload to BetterContact UI; measure hit rate.
-4. Set `ENABLE_ENRICHMENT=true` + `BETTERCONTACT_API_KEY` when you’re happy.
-
-Phone enrichment stays off (10 credits each + TCPA). Instantly / Botdog / CRM are later.
+Intake casts different benches for different lives (e.g. entrepreneur/investor vs corporate climber). Alex journey: huddle → walk → packets → engage when high value.

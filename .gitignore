@@ -1,19 +1,31 @@
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+
+# Env / secrets
 .env
 .env.*
 !.env.example
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 secrets/
-**/google-sa.json
-failed_runs/
-exports/
-*.json
-!tests/fixtures/**
+
+# OS / IDE
 .DS_Store
-Thumbs.db
+*.pem
+.vscode/
+.idea/
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
