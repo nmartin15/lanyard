@@ -23,6 +23,6 @@ describe('pickWalkPrompt', () => {
   });
 
   test('falls back to generic prompt', () => {
-    expect(pickWalkPrompt(huddle(['  ']), emptyIntake())).toContain('never do');
+    expect(pickWalkPrompt(huddle(['  ']), emptyIntake())).toContain('hard no');
   });
 });

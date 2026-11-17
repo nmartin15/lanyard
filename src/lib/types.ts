@@ -18,6 +18,9 @@ export type TeamSeat = {
   mandate: string;
 };
 
+/** Work mail the outreach agent will send from after you approve. */
+export type MailProvider = 'none' | 'gmail' | 'microsoft';
+
 export type IntakeDraft = {
   archetype: Archetype | null;
   networkAltitude: NetworkAltitude | null;
@@ -27,6 +30,10 @@ export type IntakeDraft = {
   respectList: string;
   interruptPolicy: 'rare' | 'normal';
   neverMessageAsMe: boolean;
+  /** Morning brief email — depth layer; optional. */
+  notifyEmail: string;
+  /** Where outreach sends from. none = research/approve only until connected. */
+  mailProvider: MailProvider;
 };
 
 export type CorpusItem = {
@@ -49,6 +56,17 @@ export type UserProfile = {
 
 export type PacketAction = 'approve' | 'kill' | 'reshape' | 'need_human';
 
+export type OutreachDraft = {
+  /** Recipient email — human confirms/edits before Send. */
+  to: string;
+  subject: string;
+  body: string;
+};
+
+/**
+ * A researched relationship candidate from the overnight scout —
+ * not something the user already brought in.
+ */
 export type Packet = {
   id: string;
   who: string;
@@ -56,7 +74,17 @@ export type Packet = {
   whyNow: string;
   risk: string;
   nextStep: string;
+  /** Ecosystem / where the scout looked. */
+  sourceHint: string;
+  /** Lead research summary. */
+  research: string;
+  /** How to approach this relationship. */
+  approach: string;
+  /** Sample outreach waiting for your approve. */
+  outreach: OutreachDraft;
   status: 'pending' | PacketAction;
+  /** After approve: sent via Gmail API, failed, blocked, or legacy queued. */
+  sendStatus?: 'none' | 'queued' | 'sent' | 'failed' | 'blocked_no_mail';
 };
 
 export type Huddle = {

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { buildHuddle, buildStarterPackets, emptyIntake } from './assembleTeam';
+import { normalizePackets } from './packets';
 import type {
   CorpusItem,
   DialogueMessage,
@@ -51,10 +52,34 @@ export function stateFromProfile(profile: UserProfile): PersistedState {
   };
 }
 
+function normalizeIntake(draft: IntakeDraft): IntakeDraft {
+  const mail =
+    draft.mailProvider === 'gmail' || draft.mailProvider === 'microsoft'
+      ? draft.mailProvider
+      : 'none';
+  return {
+    ...emptyIntake(),
+    ...draft,
+    notifyEmail: typeof draft.notifyEmail === 'string' ? draft.notifyEmail : '',
+    mailProvider: mail,
+  };
+}
+
 export function normalizePersistedState(state: PersistedState): PersistedState {
+  const draft = normalizeIntake(state.draft);
+  const profile = state.profile
+    ? { ...state.profile, intake: normalizeIntake(state.profile.intake) }
+    : null;
+  const packets = normalizePackets(Array.isArray(state.packets) ? state.packets : []);
+  const packetArchive = normalizePackets(
+    Array.isArray(state.packetArchive) ? state.packetArchive : []
+  );
   return {
     ...state,
-    packetArchive: Array.isArray(state.packetArchive) ? state.packetArchive : [],
+    draft,
+    profile,
+    packets,
+    packetArchive,
     corpus: Array.isArray(state.corpus) ? state.corpus : [],
     dialogue: Array.isArray(state.dialogue) ? state.dialogue : [],
   };

@@ -1,42 +1,97 @@
 import { router } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import React, { useRef } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Eyebrow, Field, Title } from '@/components/ui';
+import { Mark } from '@/components/Marks';
+import { IntakeStep } from '@/components/intake/IntakeStep';
+import { Button, Card, Field } from '@/components/ui';
+import { suggestVoiceFromIntake } from '@/lib/suggestVoice';
 import { useStore } from '@/lib/store';
 import { colors, space } from '@/lib/theme';
+import { useKeyboardBottomPad } from '@/lib/useKeyboardBottomPad';
+
+const PHOTO = require('../../../assets/onboarding/step-direction.jpg');
 
 export default function GoalsScreen() {
   const { profile, updateIntake } = useStore();
   const { goals, antiGoals } = profile.intake;
+  const canContinue = !!goals.trim() && !!antiGoals.trim();
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const keyboardHeight = useKeyboardBottomPad();
+
+  const revealLowerFields = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+  };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-        <Eyebrow>Step 2</Eyebrow>
-        <Title>Goals and anti-goals</Title>
-        <Field
-          label="This season’s goals"
-          placeholder="e.g. one operator hire, two thesis-fit angel checks, warm LP path"
-          multiline
-          style={{ minHeight: 110, textAlignVertical: 'top' }}
-          value={goals}
-          onChangeText={(goals) => updateIntake({ goals })}
-        />
-        <Field
-          label="Anti-goals (what we never do)"
-          placeholder="e.g. no cold decks to my phone, no random coffee, no posting for reach"
-          multiline
-          style={{ minHeight: 110, textAlignVertical: 'top' }}
-          value={antiGoals}
-          onChangeText={(antiGoals) => updateIntake({ antiGoals })}
-        />
-        <Button
-          label="Continue"
-          disabled={!goals.trim() || !antiGoals.trim()}
-          onPress={() => router.push('/intake/corpus')}
-        />
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.flex}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: space.xxl + keyboardHeight },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <IntakeStep
+          step="ambition"
+          mark="chase"
+          photo={PHOTO}
+          photoCaption="Chase this. Skip that."
+          photoHeight={72}
+          title="What are you after?"
+          lead="Tell them what to find — and what would make you look bad."
+        >
+          <Card accent>
+            <View style={styles.fieldHead}>
+              <Mark name="thesis" size={16} />
+            </View>
+            <Field
+              label="Goals right now"
+              placeholder="e.g. paid AI gigs, warm investor intros, hungry sales hires"
+              multiline
+              style={{ minHeight: 100, textAlignVertical: 'top' }}
+              value={goals}
+              onChangeText={(goalsText) => {
+                void updateIntake({ goals: goalsText });
+              }}
+              onFocus={revealLowerFields}
+            />
+          </Card>
+          <Card>
+            <View style={styles.fieldHead}>
+              <Mark name="filter" size={16} />
+            </View>
+            <Field
+              label="Hard no’s"
+              placeholder="e.g. no services shops, no cold pitches, no spray-and-pray"
+              multiline
+              style={{ minHeight: 100, textAlignVertical: 'top' }}
+              value={antiGoals}
+              onChangeText={(antiGoalsText) => {
+                void updateIntake({ antiGoals: antiGoalsText });
+              }}
+              onFocus={revealLowerFields}
+            />
+          </Card>
+          <Button
+            label="Next: how winning looks"
+            disabled={!canContinue}
+            onPress={() => {
+              const intake = profile.intake;
+              const suggestion = suggestVoiceFromIntake(intake);
+              void updateIntake({
+                corpusNote: intake.corpusNote.trim() || suggestion.corpusNote,
+                respectList: intake.respectList.trim() || suggestion.respectList,
+              }).then(() => router.push('/intake/corpus'));
+            }}
+          />
+        </IntakeStep>
       </ScrollView>
     </SafeAreaView>
   );
@@ -44,5 +99,7 @@ export default function GoalsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  wrap: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  fieldHead: { marginBottom: -space.xs },
 });

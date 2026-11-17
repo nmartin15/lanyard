@@ -41,7 +41,7 @@ describe('dialogue helpers', () => {
       {
         id: 'd1-r',
         from: 'team',
-        text: 'Logged. We’ll retarget hunts from that. Anything else to correct?',
+        text: 'Got it — we’ll work differently from that. Anything else?',
         createdAt: 'now',
       },
     ]);
@@ -55,7 +55,7 @@ describe('dialogue helpers', () => {
       text: 'Voice: hold anti-goals',
       createdAt: 'now',
     });
-    expect(msgs[1].text).toContain('Voice note logged');
+    expect(msgs[1].text).toContain('Voice note saved');
   });
 
   test('unansweredTeamPrompts counts trailing team messages', () => {

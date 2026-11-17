@@ -30,6 +30,39 @@ describe('overnightValidate', () => {
     expect(parsed?.huddle.updatedAt).toBe('stamp');
     expect(parsed?.packets).toHaveLength(1);
     expect(parsed?.packets[0].status).toBe('pending');
+    expect(parsed?.packets[0].research.length).toBeGreaterThan(0);
+    expect(parsed?.packets[0].outreach.subject.length).toBeGreaterThan(0);
+  });
+
+  test('parseOvernightResult keeps research + outreach when provided', () => {
+    const parsed = parseOvernightResult(
+      {
+        huddle: { belief: 'ok', chasing: [], questions: [], filtered: [] },
+        packets: [
+          {
+            who: 'Operator X',
+            why: 'fit',
+            whyNow: 'now',
+            risk: 'low',
+            nextStep: 'send',
+            sourceHint: 'ecosystem A',
+            research: 'Deep research note',
+            approach: 'Warm note',
+            outreach: { to: 'x@y.com', subject: 'Hello', body: 'Body text' },
+            status: 'pending',
+          },
+        ],
+      },
+      () => 'stamp',
+      () => 3
+    );
+    expect(parsed?.packets[0].sourceHint).toBe('ecosystem A');
+    expect(parsed?.packets[0].research).toBe('Deep research note');
+    expect(parsed?.packets[0].outreach).toEqual({
+      to: 'x@y.com',
+      subject: 'Hello',
+      body: 'Body text',
+    });
   });
 
   test('parseOvernightResult rejects empty junk', () => {

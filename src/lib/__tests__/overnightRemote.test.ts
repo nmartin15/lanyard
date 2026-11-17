@@ -50,4 +50,38 @@ describe('fetchOvernightRemote', () => {
     expect(result?.packets[0].who).toBe('API who');
     delete process.env.EXPO_PUBLIC_OVERNIGHT_URL;
   });
+
+  test('returns null on HTTP error', async () => {
+    process.env.EXPO_PUBLIC_OVERNIGHT_URL = 'http://overnight.test';
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'boom' }),
+    });
+    await expect(
+      fetchOvernightRemote(input, () => 'now', () => 1, fetchImpl as typeof fetch)
+    ).resolves.toBeNull();
+    delete process.env.EXPO_PUBLIC_OVERNIGHT_URL;
+  });
+
+  test('returns null when fetch throws / aborts', async () => {
+    process.env.EXPO_PUBLIC_OVERNIGHT_URL = 'http://overnight.test';
+    const fetchImpl = jest.fn().mockRejectedValue(new Error('aborted'));
+    await expect(
+      fetchOvernightRemote(input, () => 'now', () => 1, fetchImpl as typeof fetch)
+    ).resolves.toBeNull();
+    delete process.env.EXPO_PUBLIC_OVERNIGHT_URL;
+  });
+
+  test('returns null for malformed remote JSON', async () => {
+    process.env.EXPO_PUBLIC_OVERNIGHT_URL = 'http://overnight.test';
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ not: 'overnight' }),
+    });
+    await expect(
+      fetchOvernightRemote(input, () => 'now', () => 1, fetchImpl as typeof fetch)
+    ).resolves.toBeNull();
+    delete process.env.EXPO_PUBLIC_OVERNIGHT_URL;
+  });
 });

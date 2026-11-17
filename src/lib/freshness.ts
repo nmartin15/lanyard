@@ -28,10 +28,10 @@ export function hoursUntilStale(huddle: Huddle, nowMs = Date.now()): number {
 
 export function freshnessCopy(huddle: Huddle, nowMs = Date.now()): string {
   const state = huddleFreshness(huddle, nowMs);
-  if (state === 'stale') return 'Hunt is stale — run overnight for a fresh pack.';
+  if (state === 'stale') return 'Out of date — run overnight again.';
   if (state === 'aging') {
     const hours = hoursUntilStale(huddle, nowMs);
-    return `Hunt aging — about ${hours}h until auto-refresh.`;
+    return `Getting old — ~${hours}h until we refresh.`;
   }
-  return 'Hunt is fresh.';
+  return 'Still fresh.';
 }

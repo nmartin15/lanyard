@@ -37,7 +37,7 @@ export function buildReplyMessages(
     {
       id: `${base}-r`,
       from: 'team',
-      text: 'Logged. We’ll retarget hunts from that. Anything else to correct?',
+      text: 'Got it — we’ll work differently from that. Anything else?',
       createdAt: stamp,
     },
   ];
@@ -56,7 +56,7 @@ export function buildVoiceReplyMessages(
     {
       id: `${base}-r`,
       from: 'team',
-      text: 'Voice note logged into corpus. We’ll retarget hunts from that.',
+      text: 'Voice note saved. We’ll steer the next overnight with it.',
       createdAt: stamp,
     },
   ];

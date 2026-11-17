@@ -1,5 +1,6 @@
 import { emptyIntake } from '../assembleTeam';
 import { runOvernightHunt } from '../overnightProvider';
+import { packetFixture } from '../packets';
 import * as remote from '../overnightRemote';
 
 const input = {
@@ -27,17 +28,7 @@ describe('runOvernightHunt', () => {
         filtered: ['f'],
         updatedAt: 't',
       },
-      packets: [
-        {
-          id: 'r1',
-          who: 'Remote who',
-          why: 'y',
-          whyNow: 'n',
-          risk: 'r',
-          nextStep: 's',
-          status: 'pending',
-        },
-      ],
+      packets: [packetFixture({ id: 'r1', who: 'Remote who', status: 'pending' })],
     });
     const run = await runOvernightHunt(input, () => 'now', () => 1);
     expect(run.source).toBe('remote');

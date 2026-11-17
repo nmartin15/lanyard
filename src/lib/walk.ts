@@ -7,7 +7,7 @@ export function pickWalkPrompt(huddle: Huddle, intake: IntakeDraft): string {
 
   const anti = intake.antiGoals.trim();
   if (anti) {
-    return `Quick check: still holding anti-goals — “${anti}” — or did that change?`;
+    return `Quick check: still holding hard no’s — “${anti}” — or did that change?`;
   }
-  return 'Quick check: what should we never do on your behalf this week?';
+  return 'Quick check: what’s a hard no this week?';
 }

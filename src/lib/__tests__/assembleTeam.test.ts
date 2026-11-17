@@ -23,7 +23,7 @@ describe('assembleTeam', () => {
       'structure',
       'counsel',
     ]);
-    expect(team[0].mandate).toContain('Building altitude');
+    expect(team[0].mandate).toContain('Still building the network');
   });
 
   test('casts corporate climber bench', () => {
@@ -68,9 +68,9 @@ describe('buildHuddle', () => {
     );
     expect(huddle.belief).toContain('hire one operator');
     expect(huddle.questions.some((q) => q.includes('no cold decks'))).toBe(true);
-    expect(huddle.filtered.some((f) => f.includes('respect list') || f.includes('Maya'))).toBe(
-      true
-    );
+    expect(
+      huddle.filtered.some((f) => f.includes('call from') || f.includes('Maya'))
+    ).toBe(true);
     expect(huddle.updatedAt).toBe('2026-01-01T00:00:00.000Z');
   });
 });

@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, space, type } from '@/lib/theme';
+import { colors, radii, space, type } from '@/lib/theme';
 
 export function Screen({
   children,
@@ -22,7 +22,7 @@ export function Screen({
 }
 
 export function Eyebrow({ children }: { children: string }) {
-  return <Text style={styles.eyebrow}>{children.toUpperCase()}</Text>;
+  return <Text style={styles.eyebrow}>{children}</Text>;
 }
 
 export function Title({ children }: { children: string }) {
@@ -48,19 +48,27 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         styles.btn,
         variant === 'primary' && styles.btnPrimary,
         variant === 'ghost' && styles.btnGhost,
         variant === 'danger' && styles.btnDanger,
-        (pressed || disabled) && { opacity: 0.7 },
+        disabled && styles.btnDisabled,
+        pressed && !disabled && { opacity: 0.88 },
       ]}
     >
       <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
         style={[
           styles.btnLabel,
+          variant === 'primary' && { color: colors.onAccent },
           variant === 'ghost' && { color: colors.ink },
-          variant === 'danger' && { color: '#fff' },
+          variant === 'danger' && { color: colors.onNight },
+          disabled && styles.btnLabelDisabled,
         ]}
       >
         {label}
@@ -83,10 +91,33 @@ export function Choice({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={detail}
+      accessibilityState={{ selected }}
       style={[styles.choice, selected && styles.choiceOn]}
     >
-      <Text style={[styles.choiceLabel, selected && styles.choiceLabelOn]}>{label}</Text>
-      {detail ? <Text style={styles.choiceDetail}>{detail}</Text> : null}
+      <View style={styles.choiceTop} pointerEvents="none">
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          style={[styles.choiceLabel, selected && styles.choiceLabelOn]}
+        >
+          {label}
+        </Text>
+        <View style={[styles.radio, selected && styles.radioOn]}>
+          {selected ? <View style={styles.radioDot} /> : null}
+        </View>
+      </View>
+      {detail ? (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          style={styles.choiceDetail}
+        >
+          {detail}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -95,9 +126,14 @@ export function Field(props: TextInputProps & { label: string }) {
   const { label, style, ...rest } = props;
   return (
     <View style={{ gap: space.xs }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldLabel} accessibilityElementsHidden>
+        {label}
+      </Text>
       <TextInput
+        accessibilityLabel={label}
         placeholderTextColor={colors.inkFaint}
+        // Keep body size; cap Dynamic Type so iOS doesn’t blow up focused fields.
+        maxFontSizeMultiplier={1.15}
         style={[styles.input, style]}
         {...rest}
       />
@@ -105,8 +141,43 @@ export function Field(props: TextInputProps & { label: string }) {
   );
 }
 
-export function Card({ children }: { children: React.ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+export function Card({
+  children,
+  accent,
+}: {
+  children: React.ReactNode;
+  /** Left accent rail — quiet structure for the eye. */
+  accent?: boolean;
+}) {
+  return <View style={[styles.card, accent && styles.cardAccent]}>{children}</View>;
+}
+
+export function Rule() {
+  return <View style={styles.rule} />;
+}
+
+/**
+ * One obvious sentence under a title — no box, no shout.
+ * Use this instead of dumping jargon alone.
+ */
+export function Lead({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.lead}>{children}</Text>;
+}
+
+/** Section row without a full card — list rhythm for skim screens. */
+export function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <View style={styles.sectionBody}>{children}</View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -120,7 +191,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...type.label,
-    color: colors.accent,
+    color: colors.inkMuted,
   },
   title: {
     ...type.title,
@@ -131,48 +202,83 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
   },
   btn: {
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: radii.md,
+    paddingVertical: 15,
     paddingHorizontal: 18,
     alignItems: 'center',
   },
   btnPrimary: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.accent,
   },
   btnGhost: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
   },
   btnDanger: {
     backgroundColor: colors.danger,
   },
-  btnLabel: {
-    ...type.bodyStrong,
-    color: colors.paper,
-  },
-  choice: {
+  btnDisabled: {
+    backgroundColor: colors.paperDeep,
     borderWidth: 1,
     borderColor: colors.line,
+  },
+  btnLabel: {
+    ...type.bodyStrong,
+    color: colors.onAccent,
+  },
+  btnLabelDisabled: {
+    color: colors.inkFaint,
+  },
+  choice: {
+    borderWidth: 1.5,
+    borderColor: colors.line,
     backgroundColor: colors.panel,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     padding: space.md,
-    gap: 4,
+    gap: 6,
   },
   choiceOn: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
+    borderColor: colors.ink,
+    backgroundColor: colors.panel,
+  },
+  choiceTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
   },
   choiceLabel: {
     ...type.bodyStrong,
     color: colors.ink,
+    flex: 1,
   },
   choiceLabelOn: {
-    color: colors.accent,
+    color: colors.ink,
   },
   choiceDetail: {
     ...type.caption,
     color: colors.inkMuted,
+    paddingRight: 28,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: {
+    borderColor: colors.ink,
+    backgroundColor: colors.accent,
+  },
+  radioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.ink,
   },
   fieldLabel: {
     ...type.caption,
@@ -180,21 +286,52 @@ const styles = StyleSheet.create({
   },
   input: {
     ...type.body,
+    // Explicit 16px floor — iOS zooms the page when inputs render below 16.
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.ink,
     backgroundColor: colors.panel,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.line,
-    borderRadius: 12,
+    borderRadius: radii.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     minHeight: 48,
   },
   card: {
     backgroundColor: colors.panel,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.line,
     padding: space.md,
     gap: space.sm,
+  },
+  cardAccent: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    borderColor: colors.ink,
+  },
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.line,
+    marginVertical: space.xs,
+  },
+  lead: {
+    ...type.body,
+    color: colors.inkMuted,
+    marginTop: -4,
+  },
+  section: {
+    gap: space.sm,
+    paddingVertical: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  sectionLabel: {
+    ...type.label,
+    color: colors.inkFaint,
+  },
+  sectionBody: {
+    gap: 6,
   },
 });

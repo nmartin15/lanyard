@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,36 +10,78 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Eyebrow, Field, Title } from '@/components/ui';
+import { FadeIn } from '@/components/FadeIn';
+import { Mark, MarkPlate } from '@/components/Marks';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Body, Button, Card, Field } from '@/components/ui';
+import { unansweredTeamPrompts } from '@/lib/dialogue';
+import { pendingPackets } from '@/lib/packets';
 import { useStore } from '@/lib/store';
 import { colors, space, type } from '@/lib/theme';
 
+const PHOTO = require('../../../assets/onboarding/team-bench.jpg');
+
 export default function DialogueScreen() {
-  const { dialogue, sendDialogue } = useStore();
+  const { dialogue, sendDialogue, packets } = useStore();
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const packetCount = useMemo(() => pendingPackets(packets).length, [packets]);
 
-  const send = () => {
-    const text = draft.trim();
-    if (!text || sending) return;
+  const openQuestions = useMemo(() => {
+    const out: { id: string; text: string }[] = [];
+    for (let i = dialogue.length - 1; i >= 0; i -= 1) {
+      const msg = dialogue[i];
+      if (msg.from === 'you') break;
+      if (msg.from === 'team') out.unshift({ id: msg.id, text: msg.text });
+    }
+    return out;
+  }, [dialogue]);
+
+  const openCount = unansweredTeamPrompts(dialogue);
+
+  const send = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
     setSending(true);
-    setDraft('');
-    void sendDialogue(text).finally(() => setSending(false));
+    void sendDialogue(trimmed).finally(() => setSending(false));
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={8}
       >
         <View style={styles.header}>
-          <Eyebrow>Dialogue</Eyebrow>
-          <Title>Team ↔ you</Title>
-          <Body>Corrections land in corpus and steer the next overnight hunt.</Body>
+          <FadeIn>
+            <ScreenHeader
+              eyebrow="Questions"
+              title="Answer your team"
+              lead="They ask; you correct course. Approvals live under Decisions."
+              mark="talk"
+              photo={PHOTO}
+              photoCaption="Questions here. Decisions next door."
+            />
+          </FadeIn>
+          <FadeIn delay={80}>
+            <View style={styles.exits}>
+              {packetCount > 0 ? (
+                <Button
+                  label={`Open Decisions (${packetCount})`}
+                  onPress={() => router.navigate('/(tabs)/packets')}
+                />
+              ) : null}
+              <Button
+                label="Back to Briefing"
+                variant="ghost"
+                onPress={() => router.navigate('/(tabs)/huddle')}
+              />
+            </View>
+          </FadeIn>
         </View>
+
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.thread}
@@ -48,31 +91,76 @@ export default function DialogueScreen() {
             scrollRef.current?.scrollToEnd({ animated: true });
           }}
         >
-          {dialogue.length === 0 ? (
-            <Body>No thread yet — run a huddle overnight or finish intake.</Body>
-          ) : (
-            dialogue.map((m) => (
-              <View
-                key={m.id}
-                style={[styles.bubble, m.from === 'you' ? styles.you : styles.team]}
-              >
-                <Text style={styles.bubbleLabel}>{m.from === 'you' ? 'YOU' : 'TEAM'}</Text>
-                <Text style={styles.bubbleText}>{m.text}</Text>
+          {openCount > 0 ? (
+            <FadeIn delay={100}>
+              <View style={styles.queue}>
+                <View style={styles.queueHead}>
+                  <Mark name="ask" size={16} color={colors.ink} />
+                  <Text style={styles.queueLabel}>
+                    Waiting · {openCount}
+                  </Text>
+                </View>
+                {openQuestions.map((q) => (
+                  <Card key={q.id} accent>
+                    <View style={styles.askHead}>
+                      <MarkPlate name="ask" tone="accent" />
+                      <Text style={styles.askFrom}>Your team</Text>
+                    </View>
+                    <Text style={styles.askText}>{q.text}</Text>
+                    <View style={styles.quick}>
+                      <Button
+                        label="Still true"
+                        disabled={sending}
+                        onPress={() => send(`Still true: ${q.text}`)}
+                      />
+                      <Button
+                        label="I’ll correct"
+                        variant="ghost"
+                        disabled={sending}
+                        onPress={() => setDraft(`Correction: `)}
+                      />
+                    </View>
+                  </Card>
+                ))}
               </View>
-            ))
+            </FadeIn>
+          ) : (
+            <Body>Nothing open. Ping them anytime.</Body>
           )}
+
+          {dialogue.length > 0 ? (
+            <>
+              <Text style={styles.historyLabel}>Thread</Text>
+              {dialogue.map((m) => (
+                <View
+                  key={m.id}
+                  style={[styles.bubble, m.from === 'you' ? styles.you : styles.team]}
+                >
+                  <Text style={styles.bubbleLabel}>
+                    {m.from === 'you' ? 'You' : 'Team'}
+                  </Text>
+                  <Text style={styles.bubbleText}>{m.text}</Text>
+                </View>
+              ))}
+            </>
+          ) : null}
         </ScrollView>
+
         <View style={styles.composer}>
           <Field
-            label="Reply"
-            placeholder="Correct the team…"
+            label="Message"
+            placeholder="e.g. Still no service businesses — only investors + consult asks."
             value={draft}
             onChangeText={setDraft}
           />
           <Button
             label={sending ? 'Sending…' : 'Send'}
             disabled={!draft.trim() || sending}
-            onPress={send}
+            onPress={() => {
+              const text = draft;
+              setDraft('');
+              send(text);
+            }}
           />
         </View>
       </KeyboardAvoidingView>
@@ -83,23 +171,45 @@ export default function DialogueScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
-  header: { paddingHorizontal: space.lg, paddingTop: space.md, gap: space.xs },
+  header: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    gap: space.sm,
+    paddingBottom: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  exits: { gap: space.sm },
   thread: { padding: space.lg, gap: space.sm, paddingBottom: space.xl, flexGrow: 1 },
+  queue: { gap: space.sm, marginBottom: space.sm },
+  queueHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  queueLabel: { ...type.label, color: colors.ink },
+  askHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  askFrom: { ...type.label, color: colors.ink },
+  askText: { ...type.bodyStrong, color: colors.ink },
+  quick: { gap: space.sm, marginTop: space.xs },
+  historyLabel: { ...type.label, color: colors.inkFaint, marginTop: space.sm },
   bubble: {
-    borderRadius: 14,
+    borderRadius: 10,
     padding: space.md,
     gap: 4,
     maxWidth: '92%',
   },
   team: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accentSoft,
+    alignSelf: 'stretch',
+    backgroundColor: colors.paperDeep,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.ink,
   },
   you: {
-    alignSelf: 'flex-end',
+    alignSelf: 'stretch',
     backgroundColor: colors.panel,
     borderWidth: 1,
     borderColor: colors.line,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
   },
   bubbleLabel: { ...type.label, color: colors.inkFaint },
   bubbleText: { ...type.body, color: colors.ink },

@@ -40,7 +40,7 @@ describe('StoreProvider', () => {
 
     expect(result.current.profile.intakeComplete).toBe(true);
     expect(result.current.profile.team[0].role).toBe('deal');
-    expect(result.current.profile.team[0].mandate).toContain('selective');
+    expect(result.current.profile.team[0].mandate).toContain('picky');
     expect(result.current.huddle.belief).toContain('one operator hire');
     expect(result.current.packets.length).toBeGreaterThanOrEqual(2);
     expect(result.current.packets.some((p) => p.who.includes('Deal lead'))).toBe(true);
@@ -67,7 +67,7 @@ describe('StoreProvider', () => {
     });
 
     expect(result.current.packets.find((p) => p.id === packetId)?.status).toBe('kill');
-    expect(result.current.dialogue.some((m) => m.text.includes('Killed'))).toBe(true);
+    expect(result.current.dialogue.some((m) => m.text.includes('Passed'))).toBe(true);
     expect(result.current.profile.intake.corpusNote).toContain('[packet kill]');
 
     await act(async () => {
@@ -135,7 +135,7 @@ describe('StoreProvider', () => {
     });
 
     expect(result.current.huddle.belief).toContain('hire a lead');
-    expect(result.current.huddle.filtered.some((f) => f.startsWith('Killed:'))).toBe(true);
+    expect(result.current.huddle.filtered.some((f) => f.startsWith('Passed:'))).toBe(true);
     expect(result.current.packets.every((p) => p.status === 'pending')).toBe(true);
     expect(result.current.packets.some((p) => p.id === firstId)).toBe(false);
     expect(result.current.packetArchive.some((p) => p.id === firstId)).toBe(true);
@@ -196,6 +196,66 @@ describe('StoreProvider', () => {
       ranAgain = await result2.current.ensureOvernightIfStale();
     });
     expect(ranAgain).toBe(false);
+  });
+
+  test('approve and reshape packets update corpus, dialogue, and persistence', async () => {
+    const { result } = await renderHook(() => useStore(), { wrapper });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    await act(async () => {
+      await result.current.updateIntake({
+        archetype: 'entrepreneur_investor',
+        goals: 'warm intros',
+        antiGoals: 'no spray',
+      });
+      await result.current.completeIntake();
+    });
+
+    expect(result.current.packets.length).toBeGreaterThanOrEqual(2);
+    const approveId = result.current.packets[0].id;
+    const reshapeId = result.current.packets[1].id;
+
+    await act(async () => {
+      await result.current.resolvePacket(approveId, 'approve');
+      await result.current.resolvePacket(reshapeId, 'reshape');
+    });
+
+    expect(result.current.packets.find((p) => p.id === approveId)?.status).toBe('approve');
+    expect(result.current.packets.find((p) => p.id === reshapeId)?.status).toBe('reshape');
+    expect(result.current.dialogue.some((m) => m.text.includes('Approved'))).toBe(true);
+    expect(result.current.dialogue.some((m) => m.text.includes('for a tweak'))).toBe(true);
+    expect(result.current.packets.find((p) => p.id === approveId)?.sendStatus).toBe(
+      'blocked_no_mail'
+    );
+    expect(result.current.profile.intake.corpusNote).toContain('[packet approve]');
+    expect(result.current.profile.intake.corpusNote).toContain('[packet reshape]');
+
+    // Second resolve on same packet is a no-op
+    const dialogueLen = result.current.dialogue.length;
+    await act(async () => {
+      await result.current.resolvePacket(approveId, 'kill');
+    });
+    expect(result.current.packets.find((p) => p.id === approveId)?.status).toBe('approve');
+    expect(result.current.dialogue).toHaveLength(dialogueLen);
+
+    const raw = await AsyncStorage.getItem(STATE_KEY);
+    expect(raw).toContain('"status":"approve"');
+    expect(raw).toContain('"status":"reshape"');
+  });
+
+  test('sendDialogue works during incomplete intake draft', async () => {
+    const { result } = await renderHook(() => useStore(), { wrapper });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    await act(async () => {
+      await result.current.updateIntake({ goals: 'draft only' });
+      await result.current.sendDialogue('steer before cast');
+    });
+
+    expect(result.current.profile.intakeComplete).toBe(false);
+    expect(result.current.dialogue.some((m) => m.text === 'steer before cast')).toBe(true);
+    const raw = await AsyncStorage.getItem(STATE_KEY);
+    expect(raw).toContain('steer before cast');
   });
 
   test('reset clears persisted state', async () => {

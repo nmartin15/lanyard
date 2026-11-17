@@ -1,0 +1,153 @@
+# Full UAT: intake → huddle → packets (decide) → talk → walk → team
+# Run: npm run uat  (requires Expo Go + Metro on :8081)
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- openLink: exp://127.0.0.1:8081/--/intake
+- extendedWaitUntil:
+    visible: "Let’s go"
+    timeout: 45000
+- takeScreenshot: 01-welcome
+- tapOn: "Let’s go"
+
+# Step 1 — You
+- extendedWaitUntil:
+    visible: "What’s your game this year?"
+    timeout: 20000
+- takeScreenshot: 02-archetype
+- assertVisible: "Back"
+- tapOn: "Founder + investor"
+- tapOn: "Selective"
+- tapOn: "Next: goals"
+
+# Step 2 — Ambition
+- extendedWaitUntil:
+    visible: "What are you after?"
+    timeout: 20000
+- takeScreenshot: 03-goals
+- assertVisible: "Back"
+- tapOn: "Goals right now"
+- inputText: "Land 2 paid AI consults for trading workflows and open warm investor chats."
+- hideKeyboard
+- tapOn: "Hard no’s"
+- inputText: "No service businesses. No pitches. No agency spray."
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Next: how winning looks"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Next: how winning looks"
+
+# Step 3 — Voice
+- extendedWaitUntil:
+    visible: "What does winning look like?"
+    timeout: 20000
+- takeScreenshot: 04-corpus
+- assertVisible: "Back"
+- tapOn: "In your words"
+- inputText: "Winning looks like inbound consult asks and investor intros. High-signal only."
+- hideKeyboard
+- tapOn: "People you’d take a call from"
+- inputText: "Angels into AI tooling; closers on 100% commission."
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Next: preferences"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Next: preferences"
+
+# Step 4 — Preferences
+- extendedWaitUntil:
+    visible: "A few preferences"
+    timeout: 20000
+- takeScreenshot: 05-constraints
+- assertVisible: "Back"
+- tapOn: "Quiet — I’ll open it when I’m ready"
+- tapOn: "Nope — always ask me first"
+- scrollUntilVisible:
+    element: "Show me my team"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Show me my team"
+
+# Step 5 — Team reveal
+- extendedWaitUntil:
+    visible: "Here’s your overnight team"
+    timeout: 20000
+- takeScreenshot: 06-reveal
+- assertVisible: "Back"
+- assertVisible: "Deal lead"
+- scrollUntilVisible:
+    element: "See what’s waiting"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "See what’s waiting"
+
+# Daily loop — Briefing
+- extendedWaitUntil:
+    visible: "Overnight update"
+    timeout: 45000
+- takeScreenshot: 07-huddle
+- runFlow:
+    when:
+      visible: "Dismiss how Lanyard works"
+    commands:
+      - tapOn: "Dismiss how Lanyard works"
+- assertVisible: "1. Open Decisions.*"
+- tapOn: "1. Open Decisions.*"
+
+# Decisions — approve one, pass one
+- extendedWaitUntil:
+    visible: "Approve or pass"
+    timeout: 20000
+- takeScreenshot: 08-packets
+- assertVisible: "Back to Briefing"
+- tapOn: "Yes"
+- assertVisible: "You said: Approved"
+- tapOn: "No"
+- assertVisible: "You said: Passed"
+- tapOn: "Back to Briefing"
+
+# Questions via tab accessibility label
+- extendedWaitUntil:
+    visible: "Overnight update"
+    timeout: 20000
+- tapOn: "Questions — answer the team"
+- extendedWaitUntil:
+    visible: "Answer your team"
+    timeout: 20000
+- takeScreenshot: 09-talk
+- assertVisible: "Back to Briefing"
+- assertVisible: "Approved:.*"
+
+# Reply via tab
+- tapOn: "Reply — send one quick update"
+- extendedWaitUntil:
+    visible: "Send a quick reply"
+    timeout: 20000
+- takeScreenshot: 10-walk
+- assertVisible: "Back to Briefing"
+- tapOn: "Quick reply"
+- inputText: "Keep bar high — only warm intros."
+- hideKeyboard
+- tapOn: "Send text"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+
+# Team via tab
+- tapOn: "Team — who works overnight"
+- extendedWaitUntil:
+    visible: "Your overnight team"
+    timeout: 20000
+- takeScreenshot: 11-team
+- assertVisible: "Reset intake"
+- assertVisible: "Deal lead"
+
+# Return to briefing — spine check
+- tapOn: "Briefing — read the overnight update"
+- extendedWaitUntil:
+    visible: "Overnight update"
+    timeout: 20000
+- takeScreenshot: 12-huddle-return

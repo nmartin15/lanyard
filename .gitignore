@@ -18,6 +18,8 @@ android/
 .env.*
 !.env.example
 secrets/
+server/outbox/
+server/mail-tokens/
 
 # OS / IDE
 .DS_Store

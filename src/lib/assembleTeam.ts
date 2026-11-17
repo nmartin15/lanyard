@@ -4,12 +4,12 @@ const ENTREPRENEUR_INVESTOR_BENCH: TeamSeat[] = [
   {
     role: 'deal',
     title: 'Deal lead',
-    mandate: 'Hunt fit opportunities and warm paths. Never spray.',
+    mandate: 'Find fit opportunities and warm paths in. Skip the spray.',
   },
   {
     role: 'capital',
     title: 'Capital',
-    mandate: 'LP, check, and co-invest paths that match thesis.',
+    mandate: 'Find LP, check, and co-invest paths that match what you want.',
   },
   {
     role: 'operators',
@@ -19,12 +19,12 @@ const ENTREPRENEUR_INVESTOR_BENCH: TeamSeat[] = [
   {
     role: 'structure',
     title: 'Structure',
-    mandate: 'Tax, entity, and deal structure when it matters.',
+    mandate: 'Flag tax, entity, and deal structure when it actually matters.',
   },
   {
     role: 'counsel',
     title: 'Counsel',
-    mandate: 'Challenge weak goals. Protect taste and reputation.',
+    mandate: 'Challenge weak goals. Protect your taste and reputation.',
   },
 ];
 
@@ -42,7 +42,7 @@ const CORPORATE_CLIMBER_BENCH: TeamSeat[] = [
   {
     role: 'skills',
     title: 'Skills',
-    mandate: 'Gaps that block the next level; deliberate practice.',
+    mandate: 'Gaps that block the next level — and how to close them.',
   },
   {
     role: 'counsel',
@@ -55,7 +55,7 @@ const OPERATOR_BENCH: TeamSeat[] = [
   {
     role: 'operators',
     title: 'Talent',
-    mandate: 'Build the bench around you.',
+    mandate: 'Build the team around you.',
   },
   {
     role: 'deal',
@@ -77,9 +77,9 @@ const OPERATOR_BENCH: TeamSeat[] = [
 const ALL_BENCHES = [ENTREPRENEUR_INVESTOR_BENCH, CORPORATE_CLIMBER_BENCH, OPERATOR_BENCH];
 
 function altitudeNote(altitude: NetworkAltitude | null): string {
-  if (altitude === 'selective') return ' Network is selective — optimize for fit, not reach.';
-  if (altitude === 'established') return ' Warm network exists — cut noise hard.';
-  if (altitude === 'building') return ' Building altitude — prioritize warm paths over cold.';
+  if (altitude === 'selective') return ' Network is picky — chase fit, not reach.';
+  if (altitude === 'established') return ' Warm network on tap — cut noise hard.';
+  if (altitude === 'building') return ' Still building the network — warm paths over cold.';
   return '';
 }
 
@@ -117,6 +117,8 @@ export function emptyIntake(): IntakeDraft {
     respectList: '',
     interruptPolicy: 'rare',
     neverMessageAsMe: true,
+    notifyEmail: '',
+    mailProvider: 'none',
   };
 }
 
@@ -147,35 +149,39 @@ export function buildHuddle(intake: IntakeDraft, now = () => new Date().toISOStr
   const archetype = intake.archetype ?? 'other';
 
   const belief = goals
-    ? `This week your team is oriented to: ${goals}`
-    : 'This week your team needs clearer goals from you before hunting hard.';
+    ? `Overnight research is hunting relationships that advance: ${goals}`
+    : 'Overnight research needs clearer goals before hunting hard.';
 
   const chasing =
     archetype === 'corporate_climber'
       ? [
           'Sponsor map: who can move the next seat — warm paths only',
-          'Visibility: high-signal rooms that match your altitude',
+          'Visibility: rooms and people that match where you are',
         ]
       : archetype === 'operator'
         ? [
-            'Talent: dens that clear your bar',
-            'Partnerships: customer/partner paths worth your time',
+            'Talent dens that clear your bar',
+            'Customer / partner paths worth a careful note',
           ]
         : [
-            'Deal / operators: fit opportunities aligned to your goals',
-            'Capital: paths that clear thesis and anti-goals',
+            'Operators and deals that fit your goals',
+            'Capital paths that match what you want — skip what you don’t',
           ];
 
   const questions = [
     goals ? `Still true: “${truncate(goals, 80)}”? What shifted?` : 'What should this season’s goals be?',
     anti
-      ? `Anti-goal check: anything to add beyond “${truncate(anti, 60)}”?`
-      : 'What should we never do on your behalf?',
+      ? `Hard no check: anything to add beyond “${truncate(anti, 60)}”?`
+      : 'What’s a hard no the scout should never touch?',
   ];
 
   const filtered = [
-    anti ? `Noise matching anti-goals (${truncate(anti, 48)})` : 'Cold spray with no thesis overlap',
-    respect ? 'Asks outside your respect list' : 'Random coffee with no mutual context',
+    anti
+      ? `Noise that hits your hard no’s (${truncate(anti, 48)})`
+      : 'Cold spray with no real overlap',
+    respect
+      ? `Asks outside people you’d take a call from`
+      : 'Random coffee with no mutual context',
   ];
 
   return {
@@ -192,34 +198,57 @@ export function buildStarterPackets(
   now = () => Date.now()
 ): Packet[] {
   const goals = intake.goals.trim() || 'your stated goals';
-  const anti = intake.antiGoals.trim() || 'your anti-goals';
+  const anti = intake.antiGoals.trim() || 'your hard no’s';
   const respect = intake.respectList.trim();
   const t = now();
+
+  const warmWho = respect
+    ? `Operator near: ${truncate(respect, 48)}`
+    : 'Operator in a denser pocket of your target ecosystem';
 
   return [
     {
       id: `p-${t}-1`,
-      who: respect
-        ? `Warm path near: ${truncate(respect, 48)}`
-        : 'Warm intro candidate (respect-list adjacent)',
+      who: warmWho,
       why: `Maps to your goals — ${truncate(goals, 72)}`,
-      whyNow: 'Team flagged fit before noise piles up.',
+      whyNow: 'Overnight research pass surfaced fit before noise piles up.',
       risk: intake.neverMessageAsMe
-        ? 'Low if warm intro; they will not message as you.'
-        : 'Medium if cold; keep optics clean.',
-      nextStep: respect
-        ? 'Ask a mutual on your respect list for a one-line intro brief.'
-        : 'Add respect-list names, then approve a warm ask.',
+        ? 'Low if the note stays warm and specific; they won’t pretend to be you without approve.'
+        : 'Medium if the note reads cold — don’t look spammy.',
+      nextStep: 'Read research + sample outreach, then approve to queue send.',
+      sourceHint: respect
+        ? `Ecosystem scan near people you’d take a call from`
+        : 'Public / professional ecosystem scan',
+      research: respect
+        ? `Scout found overlap with circles around ${truncate(respect, 40)}. Credible path into the room you care about — not someone you already named.`
+        : `Scout researched this person against “${truncate(goals, 56)}”. Credible fit; still an external lead, not your existing contact.`,
+      approach: 'Short, specific note that names the overlap and asks for one clear next step — no spray.',
+      outreach: {
+        to: '',
+        subject: `Quick thought on ${truncate(goals, 40)}`,
+        body: `Hi — I came across your work while looking for people serious about ${truncate(goals, 48)}. The overlap looked real enough to write once, carefully. Open to a short chat if useful on your side?`,
+      },
       status: 'pending',
+      sendStatus: 'none',
     },
     {
       id: `p-${t}-2`,
       who: 'Open call that smells like spray',
-      why: 'Looks busy, weak overlap with your thesis.',
-      whyNow: 'Deadline pressure — easy to say yes by accident.',
-      risk: `High spam optics vs anti-goals: ${truncate(anti, 64)}`,
-      nextStep: 'Kill unless you reshape the thesis first.',
+      why: 'Looks busy, weak overlap with what you actually want.',
+      whyNow: 'Easy to say yes under deadline pressure — research says skip.',
+      risk: `High spam optics vs hard no’s: ${truncate(anti, 64)}`,
+      nextStep: 'Pass unless you tweak the brief first.',
+      sourceHint: 'Noisy public call / open application',
+      research:
+        'Thin signal, generic ask, no credible mutual context. Looks like volume outreach dressed as opportunity.',
+      approach: 'Do not engage. Keep hunting denser rooms.',
+      outreach: {
+        to: '',
+        subject: '(do not send)',
+        body: 'No sample — this is noise. Pass unless you reshape the brief.',
+      },
       status: 'pending',
+      sendStatus: 'none',
     },
   ];
 }

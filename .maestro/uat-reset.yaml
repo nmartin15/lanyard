@@ -1,0 +1,18 @@
+# Destructive path: Team → Reset intake → welcome
+# Prefer running after uat-full-flow (or with a completed profile already loaded).
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- openLink: exp://127.0.0.1:8081/--/(tabs)/team
+- extendedWaitUntil:
+    visible: "Who’s working overnight"
+    timeout: 45000
+- takeScreenshot: 13-team-before-reset
+- tapOn: "Reset intake"
+- # Confirm Alert — iOS system dialog
+- tapOn: "Reset"
+- extendedWaitUntil:
+    visible: "Let’s go"
+    timeout: 30000
+- takeScreenshot: 14-welcome-after-reset

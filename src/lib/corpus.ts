@@ -29,7 +29,7 @@ export function formatCorpusLine(item: CorpusItem): string {
     return `[voice${secs}] ${item.text || 'Voice note for the team'}`;
   }
   if (item.kind === 'file') {
-    return `[file ${item.fileName ?? 'attachment'}] ${item.text || 'Attached to corpus'}`;
+    return `[file ${item.fileName ?? 'attachment'}] ${item.text || 'Attached to your notes'}`;
   }
   return item.text;
 }

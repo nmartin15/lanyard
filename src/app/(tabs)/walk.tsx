@@ -5,6 +5,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
+import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
@@ -17,10 +18,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Card, Eyebrow, Field, Title } from '@/components/ui';
+import { Mark } from '@/components/Marks';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Body, Button, Card, Field } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { colors, space, type } from '@/lib/theme';
 import { pickWalkPrompt } from '@/lib/walk';
+
+const PHOTO = require('../../../assets/onboarding/step-direction.jpg');
 
 const recorderOptions = {
   ...RecordingPresets.HIGH_QUALITY,
@@ -44,7 +49,7 @@ export default function WalkScreen() {
   const ensureMic = async () => {
     const status = await AudioModule.requestRecordingPermissionsAsync();
     if (!status.granted) {
-      Alert.alert('Microphone needed', 'Walk voice notes need mic access.');
+      Alert.alert('Microphone needed', 'Voice replies need mic access.');
       return false;
     }
     await setAudioModeAsync({
@@ -116,14 +121,23 @@ export default function WalkScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <Eyebrow>Walk mode</Eyebrow>
-          <Title>One thing. Not a feed.</Title>
-          <Card>
-            <Text style={styles.label}>TEAM</Text>
+          <ScreenHeader
+            eyebrow="Reply"
+            title="Send a quick reply"
+            lead="One short update for the team — text or voice. Same thread as Questions."
+            mark="walk"
+            photo={PHOTO}
+            photoCaption="One reply. Keep moving."
+          />
+          <Card accent>
+            <View style={styles.promptHead}>
+              <Mark name="ask" size={18} />
+              <Text style={styles.label}>Today’s prompt</Text>
+            </View>
             <Text style={styles.copy}>{prompt}</Text>
           </Card>
           <Field
-            label="Caption or text reply"
+            label="Quick reply"
             placeholder="e.g. Correct — no SaaS."
             value={reply}
             onChangeText={setReply}
@@ -157,13 +171,30 @@ export default function WalkScreen() {
             />
           </View>
           {recorderState.isRecording ? (
-            <Body>Recording… speak one correction, then stop.</Body>
+            <Body>Recording… say the one fix, then stop.</Body>
           ) : null}
-          {logged ? <Body>Logged into corpus + Dialogue: “{logged}”</Body> : null}
-          <Body>
-            Ambient coach energy. One item per walk. Replies also land in Dialogue. Voice is
-            local — no transcription yet.
-          </Body>
+          {logged ? (
+            <Card>
+              <Text style={styles.label}>Saved</Text>
+              <Body>“{logged}” — saved under Questions and your notes.</Body>
+              <Button
+                label="See it in Questions"
+                onPress={() => router.navigate('/(tabs)/dialogue')}
+              />
+              <Button
+                label="Back to Briefing"
+                variant="ghost"
+                onPress={() => router.navigate('/(tabs)/huddle')}
+              />
+            </Card>
+          ) : (
+            <Button
+              label="Back to Briefing"
+              variant="ghost"
+              onPress={() => router.navigate('/(tabs)/huddle')}
+            />
+          )}
+          <Body>Voice stays on your phone for now — no auto-transcript yet.</Body>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -178,7 +209,8 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingBottom: space.xxl,
   },
-  label: { ...type.label, color: colors.accent },
+  promptHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  label: { ...type.label, color: colors.ink },
   copy: { ...type.body, color: colors.ink },
   row: { gap: space.sm },
 });

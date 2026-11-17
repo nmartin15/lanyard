@@ -1,19 +1,43 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Body, Button, Card, Eyebrow, Field, Title } from '@/components/ui';
+import { Mark } from '@/components/Marks';
+import { IntakeStep } from '@/components/intake/IntakeStep';
+import { Body, Button, Card, Field } from '@/components/ui';
+import { suggestVoiceFromIntake } from '@/lib/suggestVoice';
 import { useStore } from '@/lib/store';
 import { colors, space, type } from '@/lib/theme';
+import { useKeyboardBottomPad } from '@/lib/useKeyboardBottomPad';
+
+const PHOTO = require('../../../assets/onboarding/welcome-hero.jpg');
 
 export default function CorpusScreen() {
   const { profile, updateIntake, corpus, appendCorpusItem } = useStore();
-  const { corpusNote, respectList } = profile.intake;
+  const intake = profile.intake;
+  const { corpusNote, respectList } = intake;
   const [picking, setPicking] = useState(false);
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const keyboardHeight = useKeyboardBottomPad();
 
   const files = corpus.filter((c) => c.kind === 'file');
+  const hasDraft = !!corpusNote.trim() || !!respectList.trim();
+
+  const revealLowerFields = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+  };
+
+  const rewriteFromEarlier = () => {
+    const suggestion = suggestVoiceFromIntake(intake);
+    void updateIntake({
+      corpusNote: suggestion.corpusNote,
+      respectList: suggestion.respectList,
+    });
+  };
 
   const attachFile = async () => {
     if (picking) return;
@@ -39,57 +63,91 @@ export default function CorpusScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-        <Eyebrow>Step 3 · Corpus</Eyebrow>
-        <Title>Teach the team who you are</Title>
-        <Body>
-          Intense intake beats clever outreach. Drop what winning looks like — and who you
-          actually respect.
-        </Body>
-        <Field
-          label="Corpus note / voice of winning"
-          placeholder="What winning looks like in 12 months…"
-          multiline
-          style={{ minHeight: 120, textAlignVertical: 'top' }}
-          value={corpusNote}
-          onChangeText={(value) => {
-            void updateIntake({ corpusNote: value });
-          }}
-        />
-        <Field
-          label="People you actually respect"
-          placeholder="Names or roles — warm paths only"
-          multiline
-          style={{ minHeight: 90, textAlignVertical: 'top' }}
-          value={respectList}
-          onChangeText={(value) => {
-            void updateIntake({ respectList: value });
-          }}
-        />
-        <Button
-          label={picking ? 'Opening…' : 'Attach a file'}
-          variant="ghost"
-          disabled={picking}
-          onPress={() => {
-            void attachFile();
-          }}
-        />
-        {files.length > 0 ? (
-          <Card>
-            <Text style={styles.label}>ATTACHED</Text>
-            {files.map((f) => (
-              <Text key={f.id} style={styles.file}>
-                · {f.fileName ?? 'file'}
-              </Text>
-            ))}
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.flex}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: space.xxl + keyboardHeight },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <IntakeStep
+          step="voice"
+          mark="bench"
+          photo={PHOTO}
+          photoCaption="Tell them what “good” feels like."
+          photoHeight={72}
+          title="What does winning look like?"
+          lead="We drafted this from what you just said. Fix anything that’s off."
+        >
+          {hasDraft ? <Body>Already filled in — edit it or hit rewrite.</Body> : null}
+
+          <Card accent>
+            <View style={styles.fieldHead}>
+              <Mark name="thesis" size={16} />
+            </View>
+            <Field
+              label="In your words"
+              placeholder="In a year I’d be pumped if…"
+              multiline
+              style={{ minHeight: 110, textAlignVertical: 'top' }}
+              value={corpusNote}
+              onChangeText={(value) => {
+                void updateIntake({ corpusNote: value });
+              }}
+              onFocus={revealLowerFields}
+            />
           </Card>
-        ) : null}
-        <Button
-          label="Continue"
-          disabled={!corpusNote.trim()}
-          onPress={() => router.push('/intake/constraints')}
-        />
+          <Card>
+            <View style={styles.fieldHead}>
+              <Mark name="team" size={16} />
+            </View>
+            <Field
+              label="People you’d take a call from"
+              placeholder="Investors, hungry closers, folks you’d ask for intros…"
+              multiline
+              style={{ minHeight: 88, textAlignVertical: 'top' }}
+              value={respectList}
+              onChangeText={(value) => {
+                void updateIntake({ respectList: value });
+              }}
+              onFocus={revealLowerFields}
+            />
+          </Card>
+
+          <Button
+            label="Rewrite from what I already said"
+            variant="ghost"
+            onPress={rewriteFromEarlier}
+          />
+
+          <Button
+            label={picking ? 'Opening…' : 'Add a file'}
+            variant="ghost"
+            disabled={picking}
+            onPress={() => {
+              void attachFile();
+            }}
+          />
+          {files.length > 0 ? (
+            <Card>
+              <Text style={styles.label}>Files</Text>
+              {files.map((f) => (
+                <Text key={f.id} style={styles.file}>
+                  · {f.fileName ?? 'file'}
+                </Text>
+              ))}
+            </Card>
+          ) : null}
+          <Button
+            label="Next: preferences"
+            disabled={!corpusNote.trim()}
+            onPress={() => router.push('/intake/constraints')}
+          />
+        </IntakeStep>
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +155,9 @@ export default function CorpusScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  wrap: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
-  label: { ...type.label, color: colors.accent },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  fieldHead: { marginBottom: -space.xs },
+  label: { ...type.label, color: colors.ink },
   file: { ...type.caption, color: colors.inkMuted },
 });

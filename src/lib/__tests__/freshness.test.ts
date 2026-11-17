@@ -29,8 +29,8 @@ describe('huddle freshness', () => {
     const h = huddle(new Date(t0).toISOString());
     expect(huddleAgeMs(h, t0 + 2 * 60 * 60 * 1000)).toBe(2 * 60 * 60 * 1000);
     expect(hoursUntilStale(h, t0 + 2 * 60 * 60 * 1000)).toBe(6);
-    expect(freshnessCopy(h, t0 + HUDDLE_STALE_MS * 0.8)).toContain('aging');
-    expect(freshnessCopy(h, t0 + HUDDLE_STALE_MS + 1)).toContain('stale');
-    expect(freshnessCopy(h, t0 + 60_000)).toContain('fresh');
+    expect(freshnessCopy(h, t0 + HUDDLE_STALE_MS * 0.8)).toContain('Getting old');
+    expect(freshnessCopy(h, t0 + HUDDLE_STALE_MS + 1).toLowerCase()).toContain('out of date');
+    expect(freshnessCopy(h, t0 + 60_000).toLowerCase()).toContain('fresh');
   });
 });

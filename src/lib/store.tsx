@@ -15,6 +15,8 @@ import {
   buildVoiceReplyMessages,
   mergeHuddleQuestionsIntoDialogue,
 } from './dialogue';
+import { sendOutreachEmail } from './gmail';
+import { isMailConnected } from './mail';
 import { runOvernightHunt } from './overnightProvider';
 import { applyOvernightToState, refreshIfStale } from './refresh';
 import { buildPacketResolutionNotes } from './resolve';
@@ -47,12 +49,16 @@ type Store = {
   completeIntake: () => Promise<void>;
   recastSeat: (index: number, seat: TeamSeat) => Promise<void>;
   resetAll: () => Promise<void>;
-  resolvePacket: (id: string, status: Packet['status']) => Promise<void>;
+  resolvePacket: (
+    id: string,
+    status: Packet['status'],
+    opts?: { outreachTo?: string }
+  ) => Promise<{ sendStatus?: Packet['sendStatus']; sendError?: string | null }>;
   appendCorpusNote: (note: string) => Promise<void>;
   appendCorpusItem: (
     input: Omit<CorpusItem, 'id' | 'createdAt'> & { id?: string; createdAt?: string }
   ) => Promise<CorpusItem>;
-  runOvernight: () => Promise<void>;
+  runOvernight: () => Promise<PersistedState>;
   ensureOvernightIfStale: () => Promise<boolean>;
   sendDialogue: (text: string) => Promise<void>;
   sendWalkVoice: (input: {
@@ -100,10 +106,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const flush = useCallback(
     async (next: PersistedState) => {
-      const epoch = epochRef.current;
+      // Commit sync before any await so a later pick can't be rewound by a stale flush.
       stateRef.current = next;
+      const epoch = epochRef.current;
       await enqueueWrite(async () => {
         if (epoch !== epochRef.current) return;
+        // Always persist the latest ref — another sync update may have landed.
         await savePersistedState(stateRef.current);
       });
     },
@@ -134,13 +142,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateIntake = useCallback(
     async (patch: Partial<IntakeDraft>) => {
+      // Keep stateRef in sync before any await so rapid picks don't clobber each other.
       const nextDraft = { ...stateRef.current.draft, ...patch };
       const next: PersistedState = {
         ...stateRef.current,
         draft: nextDraft,
-        profile: stateRef.current.profile,
+        profile: stateRef.current.profile
+          ? { ...stateRef.current.profile, intake: nextDraft }
+          : null,
       };
+      stateRef.current = next;
       setDraft(nextDraft);
+      if (next.profile) setSaved(next.profile);
       await flush(next);
     },
     [flush]
@@ -210,18 +223,65 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [enqueueWrite]);
 
   const resolvePacket = useCallback(
-    async (id: string, status: Packet['status']) => {
-      if (status === 'pending') return;
+    async (id: string, status: Packet['status'], opts?: { outreachTo?: string }) => {
+      if (status === 'pending') return {};
       const current = stateRef.current;
       const target = current.packets.find((p) => p.id === id);
-      if (!target || target.status !== 'pending') return;
+      if (!target || target.status !== 'pending') return {};
 
-      const packetsNext = current.packets.map((p) =>
-        p.id === id ? { ...p, status } : p
-      );
-      const notes = buildPacketResolutionNotes(target, status);
-      const item = createCorpusItem({ kind: 'text', text: notes.corpusText });
       const baseIntake = current.profile?.intake ?? current.draft;
+      const mailConnected = isMailConnected(baseIntake);
+      const outreachTo = (opts?.outreachTo ?? target.outreach.to).trim();
+      const targetWithTo: Packet = {
+        ...target,
+        outreach: { ...target.outreach, to: outreachTo },
+      };
+
+      let sendStatus: Packet['sendStatus'] = 'none';
+      let sendError: string | null = null;
+
+      if (status === 'approve') {
+        if (!mailConnected) {
+          sendStatus = 'blocked_no_mail';
+        } else if (
+          targetWithTo.outreach.subject.toLowerCase().includes('do not send') ||
+          targetWithTo.approach.toLowerCase().includes('do not engage')
+        ) {
+          sendStatus = 'queued';
+        } else if (!outreachTo.includes('@')) {
+          sendStatus = 'failed';
+          sendError = 'Add a recipient email (To) before sending.';
+        } else {
+          const result = await sendOutreachEmail({
+            to: outreachTo,
+            subject: targetWithTo.outreach.subject,
+            body: targetWithTo.outreach.body,
+          });
+          if (result.ok) {
+            sendStatus = 'sent';
+          } else {
+            sendStatus = 'failed';
+            sendError = result.error;
+          }
+        }
+      }
+
+      const notes = buildPacketResolutionNotes(targetWithTo, status, {
+        mailConnected,
+        sendStatus,
+        sendError,
+      });
+      const packetsNext = current.packets.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              outreach: { ...p.outreach, to: outreachTo },
+              status,
+              sendStatus: notes.sendStatus,
+            }
+          : p
+      );
+      const item = createCorpusItem({ kind: 'text', text: notes.corpusText });
       const intake = {
         ...baseIntake,
         corpusNote: mergeCorpusNote(baseIntake.corpusNote, item),
@@ -249,7 +309,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setCorpus(corpusNext);
         setDialogue(dialogueNext);
         await flush(next);
-        return;
+        return { sendStatus: notes.sendStatus, sendError };
       }
 
       const next: PersistedState = {
@@ -264,6 +324,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setCorpus(corpusNext);
       setDialogue(dialogueNext);
       await flush(next);
+      return { sendStatus: notes.sendStatus, sendError };
     },
     [flush]
   );
@@ -336,6 +397,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setPacketArchive(next.packetArchive);
     setDialogue(next.dialogue);
     await flush(next);
+    return next;
   }, [flush]);
 
   const ensureOvernightIfStale = useCallback(async () => {
@@ -455,13 +517,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<Store>(() => {
-    const profile: UserProfile = saved ?? {
-      intakeComplete: false,
-      intake: draft,
-      team: [],
-      createdAt: '',
-      updatedAt: '',
-    };
+    // Draft is the live intake source of truth so selections re-render immediately.
+    const profile: UserProfile = saved
+      ? { ...saved, intake: draft }
+      : {
+          intakeComplete: false,
+          intake: draft,
+          team: [],
+          createdAt: '',
+          updatedAt: '',
+        };
     return {
       ready,
       profile,

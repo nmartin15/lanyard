@@ -16,10 +16,17 @@ npm start
 
 1. Finish intake → confirm team  
 2. Huddle → skim belief / chasing / questions  
-3. Packets → approve one, kill one  
+3. Packets → approve one, pass one (optional tweak)  
 4. Walk → one text reply (and optional voice)  
-5. Dialogue → confirm replies landed  
+5. Talk → confirm replies landed  
 6. Note anything that feels fake or confusing  
+
+Full QA / UAT playbook (release gates, Maestro, severity): [`docs/QA.md`](docs/QA.md)
+
+```bash
+npm run test:ci   # typecheck + lint + Jest
+npm run uat       # Maestro full flow (Expo Go + Metro on :8081)
+```
 
 ### Optional: real overnight (LLM)
 
@@ -33,6 +40,14 @@ npm run overnight:server
 
 If the URL/key is missing or the server fails, the app **falls back to local simulation**.
 
+### Gmail send (real)
+
+One-time Google Cloud setup — every click, no skipped steps:
+
+**[`docs/CONNECT_GMAIL.md`](docs/CONNECT_GMAIL.md)**
+
+After that: Team → **Connect Gmail** → Allow → Decisions → type **To** → **Send**.
+
 ## What’s in Phase 0–1
 
 - Intake → archetype, goals, corpus, constraints → **team reveal**
@@ -42,7 +57,7 @@ If the URL/key is missing or the server fails, the app **falls back to local sim
 - Walk voice notes + corpus file attach (local URIs; no transcription yet)
 - **Local overnight simulation** (manual on Huddle/Packets; auto-refreshes on app open if >8h stale)
 - Walk prompt comes from overnight huddle questions
-- Packet resolve logs to Dialogue + corpus; app opens to Packets if work is pending, else Huddle
+- Packet resolve logs to Dialogue + corpus; after intake the app always opens on Huddle first
 - Packets + Talk tab badges; interrupt policy shapes overnight pack size; Team shows recent corpus
 - Huddle today strip links to packets / walk / dialogue; network altitude shapes overnight copy
 - Walk text/voice sync into Dialogue; Team can play local voice notes
@@ -54,7 +69,8 @@ If the URL/key is missing or the server fails, the app **falls back to local sim
 
 - Multi-agent overnight / true background workers (thin single-LLM `/overnight` exists)
 - Walk voice transcription (STT) — deferred; captions + local audio are enough for now
-- Auth + cloud sync
+- Microsoft 365 send (Gmail works — see CONNECT_GMAIL.md)
+- Cloud sync of profile across devices
 - Expertise rent/license marketplace (pricing deferred)
 
 ## Product spine

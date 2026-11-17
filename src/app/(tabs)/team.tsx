@@ -3,8 +3,11 @@ import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MailConnect } from '@/components/MailConnect';
+import { Mark } from '@/components/Marks';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { VoicePlayButton } from '@/components/VoicePlayButton';
-import { Body, Button, Card, Choice, Eyebrow, Title } from '@/components/ui';
+import { Button, Card, Choice } from '@/components/ui';
 import { alternateSeats, assembleTeam } from '@/lib/assembleTeam';
 import { formatCorpusLine } from '@/lib/corpus';
 import { formatWhen } from '@/lib/format';
@@ -12,8 +15,10 @@ import { useStore } from '@/lib/store';
 import type { TeamSeat } from '@/lib/types';
 import { colors, space, type } from '@/lib/theme';
 
+const PHOTO = require('../../../assets/onboarding/team-bench.jpg');
+
 export default function TeamScreen() {
-  const { profile, resetAll, recastSeat, huddle, packets, packetArchive, corpus } =
+  const { profile, resetAll, recastSeat, huddle, packets, packetArchive, corpus, updateIntake } =
     useStore();
   const [recastingIndex, setRecastingIndex] = useState<number | null>(null);
 
@@ -43,20 +48,43 @@ export default function TeamScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.wrap}>
-        <Eyebrow>Lanyard</Eyebrow>
-        <Title>Your team</Title>
-        <Body>Working on your behalf. Tap a seat to recast.</Body>
-        <Card>
-          <Text style={styles.statusLabel}>BOARD</Text>
+        <ScreenHeader
+          eyebrow="Team"
+          title="Your overnight team"
+          lead="Tap a role to swap it. Approvals happen under Decisions."
+          mark="team"
+          photo={PHOTO}
+          photoCaption="One team. Not five chatbots."
+        />
+        <Card accent>
+          <View style={styles.row}>
+            <Mark name="huddle" size={16} />
+            <Text style={styles.statusLabel}>Quick look</Text>
+          </View>
           <Text style={styles.statusLine}>
-            Last hunt {formatWhen(huddle.updatedAt)} · {pendingCount} pending ·{' '}
-            {packetArchive.length} archived
+            Last overnight {formatWhen(huddle.updatedAt)} · {pendingCount} waiting ·{' '}
+            {packetArchive.length} already decided
           </Text>
-          <Button label="Open huddle" variant="ghost" onPress={() => router.push('/(tabs)/huddle')} />
+          <Button
+            label="Open Briefing"
+            variant="ghost"
+            onPress={() => router.navigate('/(tabs)/huddle')}
+          />
+        </Card>
+        <Card>
+          <MailConnect
+            intake={profile.intake}
+            onChangeProvider={(mailProvider) => {
+              void updateIntake({ mailProvider });
+            }}
+            onChangeEmail={(value) => {
+              void updateIntake({ notifyEmail: value });
+            }}
+          />
         </Card>
         {recentCorpus.length > 0 ? (
           <Card>
-            <Text style={styles.statusLabel}>RECENT CORPUS</Text>
+            <Text style={styles.statusLabel}>Recent notes</Text>
             {recentCorpus.map((item) => (
               <View key={item.id} style={styles.corpusRow}>
                 <Text style={styles.statusLine}>· {formatCorpusLine(item)}</Text>
@@ -66,9 +94,9 @@ export default function TeamScreen() {
               </View>
             ))}
             <Button
-              label="Open dialogue"
+              label="Open Questions"
               variant="ghost"
-              onPress={() => router.push('/(tabs)/dialogue')}
+              onPress={() => router.navigate('/(tabs)/dialogue')}
             />
           </Card>
         ) : null}
@@ -84,14 +112,14 @@ export default function TeamScreen() {
               >
                 <Text style={styles.seatTitle}>{seat.title}</Text>
                 <Text style={styles.seatMandate}>{seat.mandate}</Text>
-                <Text style={styles.hint}>{open ? 'Choose a replacement' : 'Tap to recast'}</Text>
+                <Text style={styles.hint}>{open ? 'Pick a swap' : 'Tap to swap'}</Text>
               </Pressable>
               {open ? (
                 <View style={styles.recast}>
                   <Choice
-                    label="Restore from intake"
+                    label="Restore original"
                     selected={false}
-                    detail="Put back the seat this bench was cast with."
+                    detail="Put back the role from setup."
                     onPress={() => {
                       void restoreFromIntake(index);
                     }}
@@ -117,16 +145,20 @@ export default function TeamScreen() {
           label="Reset intake"
           variant="ghost"
           onPress={() =>
-            Alert.alert('Reset Lanyard?', 'Clears local profile and returns to intake.', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Reset',
-                style: 'destructive',
-                onPress: () => {
-                  void resetAll().then(() => router.replace('/intake'));
+            Alert.alert(
+              'Reset Lanyard?',
+              'Clears this phone’s profile and sends you back to setup.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reset',
+                  style: 'destructive',
+                  onPress: () => {
+                    void resetAll().then(() => router.replace('/intake'));
+                  },
                 },
-              },
-            ])
+              ]
+            )
           }
         />
       </ScrollView>
@@ -137,12 +169,14 @@ export default function TeamScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   wrap: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
-  statusLabel: { ...type.label, color: colors.accent },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  statusLabel: { ...type.label, color: colors.ink },
   statusLine: { ...type.caption, color: colors.inkMuted },
   corpusRow: { gap: space.xs },
   seatHit: { gap: space.xs },
   seatTitle: { ...type.bodyStrong, color: colors.ink },
   seatMandate: { ...type.caption, color: colors.inkMuted },
-  hint: { ...type.label, color: colors.accent, marginTop: space.xs },
+  hint: { ...type.label, color: colors.ink, marginTop: space.xs },
   recast: { gap: space.sm, marginTop: space.sm },
 });
+

@@ -45,6 +45,23 @@ describe('parsePersistedState', () => {
     expect(parsePersistedState('{')).toBeNull();
     expect(parsePersistedState('"nope"')).toBeNull();
   });
+
+  test('normalizes partial v1 objects missing arrays', () => {
+    const partial = {
+      version: 1 as const,
+      profile: null,
+      draft: emptyIntake(),
+      huddle: emptyPersistedState().huddle,
+      packets: [],
+      // packetArchive / corpus / dialogue intentionally omitted
+    };
+    const parsed = parsePersistedState(JSON.stringify(partial));
+    expect(parsed?.packetArchive).toEqual([]);
+    expect(parsed?.corpus).toEqual([]);
+    expect(parsed?.dialogue).toEqual([]);
+    expect(parsed?.draft.notifyEmail).toBe('');
+    expect(parsed?.draft.mailProvider).toBe('none');
+  });
 });
 
 describe('load/save PersistedState', () => {

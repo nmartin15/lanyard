@@ -29,7 +29,7 @@ function latestCorrections(corpus: CorpusItem[], limit = 3): CorpusItem[] {
 }
 
 function seatTitles(team: TeamSeat[]): string {
-  if (team.length === 0) return 'your bench';
+  if (team.length === 0) return 'your team';
   return team
     .slice(0, 3)
     .map((s) => s.title)
@@ -51,9 +51,9 @@ function boardLimit(policy: IntakeDraft['interruptPolicy']): number {
 }
 
 function altitudeLine(altitude: IntakeDraft['networkAltitude']): string | null {
-  if (altitude === 'selective') return 'Altitude: selective — optimize for fit, not reach.';
-  if (altitude === 'established') return 'Altitude: established — cut noise hard; warm paths first.';
-  if (altitude === 'building') return 'Altitude: building — prioritize warm paths over cold.';
+  if (altitude === 'selective') return 'Network is picky — chase fit, not reach.';
+  if (altitude === 'established') return 'You’ve got a warm network — cut noise; warm paths first.';
+  if (altitude === 'building') return 'Still building the network — warm paths over cold.';
   return null;
 }
 
@@ -64,21 +64,31 @@ function noisePacket(
 ): Packet {
   const who =
     intake.archetype === 'corporate_climber'
-      ? 'High-signal room with weak sponsor map'
+      ? 'Busy room with a weak sponsor path'
       : intake.archetype === 'operator'
         ? 'Talent dens that looks busy, not bar-clearing'
-        : 'Deal-flow huddle with thin thesis overlap';
+        : 'Deal meetup with thin overlap to what you want';
 
   return {
     id: `p-${seed}-noise`,
     who,
-    why: 'Looks urgent; weak overlap with your thesis and bench mandates.',
-    whyNow: 'Easy yes under time pressure.',
+    why: 'Looks urgent; weak overlap with your goals and team roles.',
+    whyNow: 'Easy yes under time pressure — research says skip.',
     risk: anti
-      ? `Likely violates: ${truncate(anti, 48)}`
+      ? `Likely hits a hard no: ${truncate(anti, 48)}`
       : 'High spam optics if you show up cold.',
-    nextStep: 'Default kill unless you reshape the thesis.',
+    nextStep: 'Default pass unless you tweak the brief first.',
+    sourceHint: 'Noisy public call / open room',
+    research:
+      'Thin thesis overlap. Looks busy from the outside; no credible mutual context or warm path.',
+    approach: 'Do not engage. Keep the scout on denser rooms.',
+    outreach: {
+      to: '',
+      subject: '(do not send)',
+      body: 'No sample — this is noise. Pass unless you reshape the brief.',
+    },
     status: 'pending',
+    sendStatus: 'none',
   };
 }
 
@@ -100,24 +110,41 @@ function seatHuntPacket(args: {
     ? `${seat.title} find near ${truncate(respect, 36)}`
     : `${seat.title} overnight candidate`;
 
+  const goalBit = goals ? truncate(goals, 48) : 'your stated goals';
+
   return {
     id: `p-${seed}-s${index}`,
     who,
-    why: `${seat.title} mandate: ${truncate(seat.mandate, 72)}${
+    why: `${seat.title}: ${truncate(seat.mandate, 72)}${
       goals ? ` · Goals: ${truncate(goals, 40)}` : ''
     }`,
     whyNow: correction
       ? `Retargeted from your note: “${truncate(correction.text, 48)}”`
-      : `${seat.title} surfaced this on the overnight pass.`,
+      : `${seat.title} surfaced this on the research pass.`,
     risk: anti
-      ? `Watch anti-goals: ${truncate(anti, 48)}`
+      ? `Watch hard no’s: ${truncate(anti, 48)}`
       : intake.neverMessageAsMe
-        ? 'Low if warm; they will not message as you.'
-        : 'Medium if optics unclear.',
+        ? 'Low if the note stays warm and specific; they won’t send as you without approve.'
+        : 'Medium if it looks weird from the outside.',
     nextStep: approvedCount
-      ? 'Approve only if it beats paths already warm on your board.'
-      : `Let ${seat.title} advance only if you approve.`,
+      ? 'Approve only if research + sample beat paths already warm.'
+      : 'Read research + sample outreach, then approve to queue send.',
+    sourceHint: respect
+      ? `Ecosystem scan near ${truncate(respect, 40)}`
+      : `${seat.title} ecosystem scan`,
+    research: correction
+      ? `Scout re-ran the hunt after your note (“${truncate(correction.text, 56)}”). ${who} looks like a credible external lead for ${goalBit} — not someone you already named.`
+      : `Scout researched this person against ${goalBit}. Credible fit in ${seat.title}'s lane; still an external lead, not your existing contact.`,
+    approach: respect
+      ? `Warm, specific note that names the overlap near ${truncate(respect, 28)} and asks for one clear next step.`
+      : 'Short, specific note that names the real overlap and asks for one clear next step — no spray.',
+    outreach: {
+      to: '',
+      subject: `Quick thought — ${truncate(goalBit, 36)}`,
+      body: `Hi — while looking for people serious about ${goalBit}, your work stood out. The overlap looked real enough to write once, carefully. Open to a short chat if useful on your side?`,
+    },
     status: 'pending',
+    sendStatus: 'none',
   };
 }
 
@@ -158,24 +185,24 @@ export function simulateOvernight(
 
   const beliefParts = [
     goals
-      ? `Overnight, ${seatTitles(team)} hunted against: ${truncate(goals, 72)}`
-      : `Overnight, ${seatTitles(team)} waited on clearer goals before hunting hard`,
+      ? `Overnight research: ${seatTitles(team)} hunted relationships for ${truncate(goals, 72)}`
+      : `Overnight research: ${seatTitles(team)} waited on clearer goals before hunting`,
   ];
   if (seats.length > 0) {
     beliefParts.push(`${seats.map((s) => s.title).join(' + ')} led the pass.`);
   }
   beliefParts.push(
     intake.interruptPolicy === 'normal'
-      ? 'Interrupt posture: normal — slightly broader hunt.'
-      : 'Interrupt posture: rare — lean pack only.'
+      ? 'Chatty mode — a bit wider when something’s real.'
+      : 'Quiet mode — shorter list.'
   );
   const altitude = altitudeLine(intake.networkAltitude);
   if (altitude) beliefParts.push(altitude);
   if (approved.length > 0) {
-    beliefParts.push(`${approved.length} path(s) you approved stay warm.`);
+    beliefParts.push(`${approved.length} approved outreach path(s) stay warm.`);
   }
   if (corrections.length > 0) {
-    beliefParts.push(`Corpus corrections landed (${corrections.length}) — retargeted.`);
+    beliefParts.push(`Your notes landed (${corrections.length}) — we retargeted.`);
   }
   const belief = beliefParts.join(' ');
 
@@ -187,28 +214,28 @@ export function simulateOvernight(
   for (const seat of seats) {
     chasing.push(
       goals
-        ? `${seat.title}: hunt “${truncate(goals, 40)}”`
+        ? `${seat.title}: looking for “${truncate(goals, 40)}”`
         : `${seat.title}: ${truncate(seat.mandate, 48)}`
     );
   }
   if (respect) {
     chasing.push(`Warm paths only near: ${truncate(respect, 48)}`);
   } else if (chasing.length < 2) {
-    chasing.push('Build respect-list density before cold asks');
+    chasing.push('Add people you’d take a call from before cold asks');
   }
 
   const questions: string[] = [];
   if (reshape.length > 0) {
     questions.push(
-      `You flagged reshape/human on “${truncate(reshape[0].who, 40)}” — what should change?`
+      `You asked to tweak “${truncate(reshape[0].who, 40)}” — what should change?`
     );
   }
   if (corrections[0]) {
     questions.push(`Still hold “${truncate(corrections[0].text, 56)}”?`);
   } else if (anti) {
-    questions.push(`Anti-goal still hard: “${truncate(anti, 56)}”?`);
+    questions.push(`Hard no still hard: “${truncate(anti, 56)}”?`);
   } else {
-    questions.push('What should we never do on your behalf?');
+    questions.push('What’s a hard no we should never touch?');
   }
   if (questions.length < 2) {
     questions.push(
@@ -219,13 +246,13 @@ export function simulateOvernight(
   }
 
   const filtered: string[] = [
-    ...killed.slice(0, 3).map((p) => `Killed: ${truncate(p.who, 56)}`),
+    ...killed.slice(0, 3).map((p) => `Passed: ${truncate(p.who, 56)}`),
     anti
-      ? `Filtered noise vs anti-goals (${truncate(anti, 40)})`
-      : 'Filtered cold spray with no thesis',
+      ? `Filtered noise vs hard no’s (${truncate(anti, 40)})`
+      : 'Filtered cold outreach with no real overlap',
   ];
   if (intake.neverMessageAsMe) {
-    filtered.push('Blocked any “message as you” drafts');
+    filtered.push('Blocked anything that would pretend to be you');
   }
 
   const huddle: Huddle = {
@@ -256,7 +283,7 @@ export function simulateOvernight(
         seat: {
           role: 'deal',
           title: 'Team',
-          mandate: 'Hunt fit opportunities carefully.',
+          mandate: 'Find fit opportunities carefully.',
         },
         intake,
         goals,

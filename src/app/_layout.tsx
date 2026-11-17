@@ -3,13 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { useAppFonts } from '@/lib/fonts';
 import { colors } from '@/lib/theme';
 import { StoreProvider, useStore } from '@/lib/store';
 
 function RootNavigator() {
   const { ready } = useStore();
+  const [fontsLoaded, fontError] = useAppFonts();
 
-  if (!ready) {
+  if (!ready || (!fontsLoaded && !fontError)) {
     return (
       <View
         style={{
@@ -31,6 +33,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="intake" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="brief" options={{ presentation: 'modal' }} />
       </Stack>
     </>
   );

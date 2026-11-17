@@ -1,5 +1,6 @@
 import { emptyIntake } from '../assembleTeam';
 import { isHuddleStale, simulateOvernight } from '../overnight';
+import { packetFixture } from '../packets';
 import type { CorpusItem, IntakeDraft, Packet, TeamSeat } from '../types';
 
 const team: TeamSeat[] = [
@@ -22,33 +23,9 @@ function intake(patch: Partial<IntakeDraft> = {}): IntakeDraft {
 describe('simulateOvernight', () => {
   test('carries pending, drops resolved, adds fresh packets', () => {
     const packets: Packet[] = [
-      {
-        id: 'keep',
-        who: 'Pending warm path',
-        why: 'y',
-        whyNow: 'n',
-        risk: 'r',
-        nextStep: 's',
-        status: 'pending',
-      },
-      {
-        id: 'dead',
-        who: 'Spam salon',
-        why: 'y',
-        whyNow: 'n',
-        risk: 'r',
-        nextStep: 's',
-        status: 'kill',
-      },
-      {
-        id: 'go',
-        who: 'Maya intro',
-        why: 'y',
-        whyNow: 'n',
-        risk: 'r',
-        nextStep: 's',
-        status: 'approve',
-      },
+      packetFixture({ id: 'keep', who: 'Pending warm path', status: 'pending' }),
+      packetFixture({ id: 'dead', who: 'Spam salon', status: 'kill' }),
+      packetFixture({ id: 'go', who: 'Maya intro', status: 'approve' }),
     ];
 
     const result = simulateOvernight(
@@ -68,7 +45,7 @@ describe('simulateOvernight', () => {
     expect(result.huddle.belief).toContain('Deal lead');
     expect(result.huddle.chasing.some((c) => c.includes('Maya intro'))).toBe(true);
     expect(result.huddle.filtered.some((f) => f.includes('Spam salon'))).toBe(true);
-    expect(result.huddle.filtered.some((f) => f.includes('message as you'))).toBe(true);
+    expect(result.huddle.filtered.some((f) => f.includes('pretend to be you'))).toBe(true);
   });
 
   test('retargets from corpus corrections', () => {
@@ -93,24 +70,14 @@ describe('simulateOvernight', () => {
       {
         intake: intake(),
         team,
-        packets: [
-          {
-            id: 'r1',
-            who: 'Need reshape path',
-            why: 'y',
-            whyNow: 'n',
-            risk: 'r',
-            nextStep: 's',
-            status: 'reshape',
-          },
-        ],
+        packets: [packetFixture({ id: 'r1', who: 'Need reshape path', status: 'reshape' })],
         corpus,
       },
       () => 't',
       () => 1
     );
 
-    expect(result.huddle.belief).toContain('Corpus corrections');
+    expect(result.huddle.belief).toContain('Your notes landed');
     expect(result.huddle.questions.some((q) => q.includes('IC builder'))).toBe(true);
     expect(result.huddle.questions.some((q) => q.includes('Need reshape path'))).toBe(true);
     expect(result.packets.some((p) => p.whyNow?.includes('IC builder'))).toBe(true);
@@ -127,8 +94,8 @@ describe('simulateOvernight', () => {
       () => 't',
       () => 3
     );
-    expect(result.huddle.belief).toContain('selective');
-    expect(result.huddle.chasing.some((c) => c.includes('selective'))).toBe(true);
+    expect(result.huddle.belief).toContain('picky');
+    expect(result.huddle.chasing.some((c) => c.includes('picky'))).toBe(true);
   });
 
   test('rare interrupt policy keeps a leaner board than normal', () => {
@@ -157,9 +124,9 @@ describe('simulateOvernight', () => {
       () => 2
     );
     expect(rare.packets.length).toBeLessThanOrEqual(3);
-    expect(rare.huddle.belief).toContain('rare');
+    expect(rare.huddle.belief).toContain('Quiet mode');
     expect(normal.packets.length).toBeGreaterThan(rare.packets.length);
-    expect(normal.huddle.belief).toContain('normal');
+    expect(normal.huddle.belief).toContain('Chatty mode');
   });
 
   test('filtered includes kills from packet archive', () => {
@@ -170,15 +137,7 @@ describe('simulateOvernight', () => {
         packets: [],
         corpus: [],
         packetArchive: [
-          {
-            id: 'arch1',
-            who: 'Archived spray',
-            why: 'y',
-            whyNow: 'n',
-            risk: 'r',
-            nextStep: 's',
-            status: 'kill',
-          },
+          packetFixture({ id: 'arch1', who: 'Archived spray', status: 'kill' }),
         ],
       },
       () => 't',
