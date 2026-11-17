@@ -59,11 +59,20 @@ export default function DialogueScreen() {
             <ScreenHeader
               eyebrow="Questions"
               title="Answer your team"
-              lead="They ask; you correct course. Approvals live under Decisions."
+              lead="Every answer lands in your taste file and steers the next overnight. Skipping this keeps the hunt dumb."
               mark="talk"
               photo={PHOTO}
               photoCaption="Questions here. Decisions next door."
             />
+          </FadeIn>
+          <FadeIn delay={40}>
+            <Card>
+              <Body>
+                This is how the corpus grows after intake: your replies here + Yes/No on
+                Decisions + quick Replies. Short intake is fine — talking back is what trains
+                them.
+              </Body>
+            </Card>
           </FadeIn>
           <FadeIn delay={80}>
             <View style={styles.exits}>

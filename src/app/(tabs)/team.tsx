@@ -51,7 +51,7 @@ export default function TeamScreen() {
         <ScreenHeader
           eyebrow="Team"
           title="Your overnight team"
-          lead="Tap a role to swap it. Approvals happen under Decisions."
+          lead="Tap a role to swap it. Your taste file (below) is what they learn from."
           mark="team"
           photo={PHOTO}
           photoCaption="One team. Not five chatbots."
@@ -72,6 +72,17 @@ export default function TeamScreen() {
           />
         </Card>
         <Card>
+          <Text style={styles.statusLabel}>How your taste file grows</Text>
+          <Text style={styles.statusLine}>
+            Intake starts it. Then every Decision, Question answer, Reply, and attachment
+            adds a line. Overnight reads that file — so interacting isn’t optional if you want
+            better hunts.
+          </Text>
+          <Text style={styles.statusLine}>
+            Briefings stay on this phone. Email is only an optional copy of the long write-up.
+          </Text>
+        </Card>
+        <Card>
           <MailConnect
             intake={profile.intake}
             onChangeProvider={(mailProvider) => {
@@ -84,7 +95,7 @@ export default function TeamScreen() {
         </Card>
         {recentCorpus.length > 0 ? (
           <Card>
-            <Text style={styles.statusLabel}>Recent notes</Text>
+            <Text style={styles.statusLabel}>Recent taste notes</Text>
             {recentCorpus.map((item) => (
               <View key={item.id} style={styles.corpusRow}>
                 <Text style={styles.statusLine}>· {formatCorpusLine(item)}</Text>

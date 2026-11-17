@@ -183,7 +183,7 @@ export default function PacketsScreen() {
           lead={
             pending.length === 0
               ? 'Nothing waiting. Run overnight again when you want fresh leads.'
-              : `${pending.length} researched lead${pending.length === 1 ? '' : 's'} — approve sample outreach, pass, or tweak.`
+              : `${pending.length} researched lead${pending.length === 1 ? '' : 's'} — each Yes/No teaches taste for the next hunt.`
           }
           mark="packets"
           photo={PHOTO}

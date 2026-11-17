@@ -124,7 +124,7 @@ export default function WalkScreen() {
           <ScreenHeader
             eyebrow="Reply"
             title="Send a quick reply"
-            lead="One short update for the team — text or voice. Same thread as Questions."
+            lead="One short update — text or voice. It goes in your taste file and steers overnight. Same thread as Questions."
             mark="walk"
             photo={PHOTO}
             photoCaption="One reply. Keep moving."

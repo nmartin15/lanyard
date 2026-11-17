@@ -5,15 +5,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Mark } from '@/components/Marks';
 import { colors, fonts, radii, space, type } from '@/lib/theme';
 
-const KEY = 'lanyard.productMap.v6.dismissed';
+const KEY = 'lanyard.productMap.v7.dismissed';
 
 const ROWS = [
-  { n: '1', tab: 'Briefing', mean: 'Read overnight research leads', mark: 'huddle' as const },
-  { n: '2', tab: 'Decisions', mean: 'Approve sample outreach to send', mark: 'packets' as const },
-  { n: '3', tab: 'Questions', mean: 'Correct the hunt when stuck', mark: 'talk' as const },
+  { n: '1', tab: 'Briefing', mean: 'Read overnight research (saved on this phone)', mark: 'huddle' as const },
+  { n: '2', tab: 'Decisions', mean: 'Approve sample outreach — teaches taste', mark: 'packets' as const },
+  { n: '3', tab: 'Questions', mean: 'Correct the hunt — makes the next pass smarter', mark: 'talk' as const },
+  { n: '4', tab: 'Reply', mean: 'Quick notes also feed your taste file', mark: 'walk' as const },
 ];
 
-/** Quiet, dismissible legend — three plain jobs. */
+/** Quiet, dismissible legend — jobs + why talking back matters. */
 export function ProductMap() {
   const [visible, setVisible] = useState(false);
 
@@ -51,6 +52,10 @@ export function ProductMap() {
           <Text style={styles.mean}>{row.mean}</Text>
         </View>
       ))}
+      <Text style={styles.foot}>
+        Lazy intake is fine to start — but every Yes/No and answer trains the overnight hunt.
+        Skip talking and it stays dumb.
+      </Text>
     </View>
   );
 }
@@ -109,5 +114,10 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.inkMuted,
     flex: 1,
+  },
+  foot: {
+    ...type.caption,
+    color: colors.ink,
+    marginTop: space.xs,
   },
 });

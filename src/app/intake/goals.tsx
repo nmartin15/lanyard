@@ -5,9 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Mark } from '@/components/Marks';
 import { IntakeStep } from '@/components/intake/IntakeStep';
-import { Button, Card, Field } from '@/components/ui';
+import { Body, Button, Card, Field } from '@/components/ui';
 import { suggestVoiceFromIntake } from '@/lib/suggestVoice';
 import { useStore } from '@/lib/store';
+import { goalsLookThin } from '@/lib/taste';
 import { colors, space } from '@/lib/theme';
 import { useKeyboardBottomPad } from '@/lib/useKeyboardBottomPad';
 
@@ -45,8 +46,17 @@ export default function GoalsScreen() {
           photoCaption="Chase this. Skip that."
           photoHeight={72}
           title="What are you after?"
-          lead="Tell them what to find — and what would make you look bad."
+          lead="Your overnight advisor only knows what you put here. A lazy one-liner works to start — two more sentences make the hunt much sharper."
         >
+          {goalsLookThin(goals, antiGoals) && (goals.trim() || antiGoals.trim()) ? (
+            <Card>
+              <Body>
+                Advisor nudge: add who / what / where if you can. Example — “Paid AI advisory
+                for Series A fintech ops leaders in SF, warm intros only.” Short is ok; thin
+                means noisier overnight.
+              </Body>
+            </Card>
+          ) : null}
           <Card accent>
             <View style={styles.fieldHead}>
               <Mark name="thesis" size={16} />

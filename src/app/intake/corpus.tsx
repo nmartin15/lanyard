@@ -9,6 +9,7 @@ import { IntakeStep } from '@/components/intake/IntakeStep';
 import { Body, Button, Card, Field } from '@/components/ui';
 import { suggestVoiceFromIntake } from '@/lib/suggestVoice';
 import { useStore } from '@/lib/store';
+import { intakeLooksThin } from '@/lib/taste';
 import { colors, space, type } from '@/lib/theme';
 import { useKeyboardBottomPad } from '@/lib/useKeyboardBottomPad';
 
@@ -81,8 +82,17 @@ export default function CorpusScreen() {
           photoCaption="Tell them what “good” feels like."
           photoHeight={72}
           title="What does winning look like?"
-          lead="We drafted this from what you just said. Fix anything that’s off."
+          lead="This starts your taste file. After setup, every Decision / Question / Reply keeps building it — so a short intake isn’t the end."
         >
+          {intakeLooksThin(intake) ? (
+            <Card>
+              <Body>
+                Advisor nudge: if you skimped earlier, thicken this. Names of people you’d take
+                a call from, rooms that matter, and one sentence on “I’d be thrilled if…” help
+                more than a perfect essay later.
+              </Body>
+            </Card>
+          ) : null}
           {hasDraft ? <Body>Already filled in — edit it or hit rewrite.</Body> : null}
 
           <Card accent>

@@ -3,9 +3,9 @@ import { router, type Href } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, fonts, space, type } from '@/lib/theme';
+import { colors, fonts, radii, space, type } from '@/lib/theme';
 
-/** Explicit back — never rely on an empty Stack chevron. */
+/** Explicit back — never rely on a missing Stack chevron. */
 export function IntakeBack({
   fallback,
   label = 'Back',
@@ -22,12 +22,12 @@ export function IntakeBack({
         }
         router.replace(fallback);
       }}
-      hitSlop={10}
+      hitSlop={12}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.hit, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [styles.hit, pressed && { opacity: 0.75 }]}
     >
-      <Ionicons name="chevron-back" size={20} color={colors.ink} />
+      <Ionicons name="chevron-back" size={22} color={colors.ink} />
       <Text style={styles.label}>{label}</Text>
     </Pressable>
   );
@@ -38,13 +38,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 2,
+    gap: 4,
     marginLeft: -space.xs,
-    paddingVertical: space.xs,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
+    backgroundColor: colors.panel,
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
   },
   label: {
     ...type.caption,
     fontFamily: fonts.bodySemi,
     color: colors.ink,
+    paddingRight: 4,
   },
 });

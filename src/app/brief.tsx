@@ -78,8 +78,8 @@ export default function BriefScreen() {
         <Text style={styles.eyebrow}>Long version</Text>
         <Text style={styles.title}>{focus ? 'This option' : 'The full write-up'}</Text>
         <Body>
-          Same updates as your morning skim — with the story filled in. Emailing sends this
-          exact page.
+          Always saved on this phone (same overnight board as Briefing). Emailing is optional —
+          it sends a copy of this page; it doesn’t move the source of truth off your device.
         </Body>
 
         {!focus ? (
@@ -132,12 +132,12 @@ export default function BriefScreen() {
         ))}
 
         <Card accent>
-          <Text style={styles.label}>Email it</Text>
+          <Text style={styles.label}>Email a copy (optional)</Text>
           <Body>Subject: {brief.subject}</Body>
           <Body>
             {notifyEmail
-              ? `Sending to ${notifyEmail}`
-              : 'No email yet — add one under Setup.'}
+              ? `Copy goes to ${notifyEmail}. The app briefing stays here either way.`
+              : 'No email yet — add one under Team / setup. The write-up still lives in the app.'}
           </Body>
           <Button
             label={sending ? 'Sending…' : 'Email me this write-up'}

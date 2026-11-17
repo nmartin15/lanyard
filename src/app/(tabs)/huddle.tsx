@@ -44,7 +44,7 @@ export default function HuddleScreen() {
           <ScreenHeader
             eyebrow="Briefing"
             title="Overnight update"
-            lead="Read what your team found. Then make decisions or answer questions."
+            lead="This lives on your phone. Email is optional — same write-up, if you want it in your inbox."
             mark="huddle"
             photo={PHOTO}
             photoCaption="A briefing — not another feed."
@@ -53,6 +53,17 @@ export default function HuddleScreen() {
 
         <FadeIn delay={60}>
           <ProductMap />
+        </FadeIn>
+
+        <FadeIn delay={80}>
+          <Card>
+            <Text style={styles.nextLabel}>Where this goes</Text>
+            <Body>
+              Briefing + long version stay on this phone. Optional email sends a copy. Your
+              taste file (corpus) grows every time you approve, pass, answer, or reply — that’s
+              how overnight gets smarter.
+            </Body>
+          </Card>
         </FadeIn>
 
         <Text style={styles.meta}>
@@ -67,7 +78,7 @@ export default function HuddleScreen() {
               <View style={styles.nextCopy}>
                 <Text style={styles.nextLabel}>Do this next</Text>
                 <Text style={styles.hint}>
-                  Decisions = approve or pass. Questions = answer the team.
+                  Decisions + Questions teach taste. Quiet users get a dumber overnight.
                 </Text>
               </View>
             </View>

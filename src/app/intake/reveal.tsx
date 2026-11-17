@@ -59,7 +59,9 @@ export default function RevealScreen() {
           <Text style={styles.howLine}>2. Decisions — approve sample outreach</Text>
           <Text style={styles.howLine}>3. Questions — correct the hunt when stuck</Text>
           <Body>
-            Connect Gmail or Microsoft so approved notes can send. Nothing goes out without you.
+            Connect Gmail so approved notes can send. Briefings stay on your phone; email is
+            optional. After setup, talking back (Decisions / Questions / Reply) builds the
+            corpus that makes overnight smarter.
           </Body>
         </Card>
 
